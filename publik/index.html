@@ -54,7 +54,7 @@
           Hubungkan ke MikroTik
         </button>
       </form>
-      <p class="text-xs text-slate-500 text-center mt-4">Data login hanya tersimpan di browser perangkat Anda sendiri.</p>
+      <p class="text-xs text-slate-500 text-center mt-4">Data tagihan tersimpan permanen di Router MikroTik Anda.</p>
     </div>
   </div>
 
@@ -116,17 +116,26 @@
     </div>
   </div>
 
-  <!-- MODAL EDIT USER & PROFILE -->
+  <!-- MODAL EDIT USER, PROFILE & PEMBAYARAN -->
   <div id="editModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-      <h2 class="text-lg font-bold text-white mb-4">Edit User & Profile: <span id="editUserTitle" class="text-blue-400"></span></h2>
+      <h2 class="text-lg font-bold text-white mb-4">Edit User & Pembayaran: <span id="editUserTitle" class="text-blue-400"></span></h2>
       <form id="editForm" class="space-y-3">
         <input type="hidden" id="editId" />
         <input type="hidden" id="editName" />
 
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Profile PPPoE (MikroTik)</label>
-          <select id="editProfile" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"></select>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Profile PPPoE</label>
+            <select id="editProfile" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"></select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Status Pembayaran</label>
+            <select id="editStatus" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+              <option value="BELUM BAYAR">BELUM BAYAR</option>
+              <option value="LUNAS">LUNAS</option>
+            </select>
+          </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
@@ -147,7 +156,7 @@
 
         <div class="flex justify-end gap-2 pt-3">
           <button type="button" onclick="closeEditModal()" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-sm">Batal</button>
-          <button type="submit" id="saveEditBtn" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-sm font-semibold">Simpan Perubahan</button>
+          <button type="submit" id="saveEditBtn" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-sm font-semibold">Simpan Permanen</button>
         </div>
       </form>
     </div>
@@ -170,7 +179,6 @@
       };
     }
 
-    // Isi otomatis form login jika tersimpan di LocalStorage
     window.onload = () => {
       const saved = JSON.parse(localStorage.getItem('mt_cfg') || 'null');
       if (saved && saved.host) {
@@ -271,7 +279,7 @@
           </td>
           <td class="p-3">
             <div>Rp ${Number(u.price).toLocaleString('id-ID')}</div>
-            <div class="text-xs text-slate-400">Tempo tgl ${u.dueDate}</div>
+            <div class="text-xs text-slate-400">Tempo tgl ${u.dueDate}${u.lastPaid ? ` • Bayar: ${u.lastPaid}` : ''}</div>
           </td>
           <td class="p-3">
             <span class="px-2 py-0.5 rounded text-xs font-semibold ${u.isIsolated ? 'bg-rose-950 text-rose-400' : (u.status === 'LUNAS' ? 'bg-blue-950 text-blue-400' : 'bg-amber-950 text-amber-400')}">
@@ -294,6 +302,7 @@
       document.getElementById('editPrice').value = u.price;
       document.getElementById('editDueDate').value = u.dueDate;
       document.getElementById('editPhone').value = u.phone;
+      document.getElementById('editStatus').value = u.status === 'LUNAS' ? 'LUNAS' : 'BELUM BAYAR';
 
       const select = document.getElementById('editProfile');
       const profiles = allProfiles.length ? allProfiles : [u.profile];
@@ -320,6 +329,7 @@
             id: document.getElementById('editId').value,
             name: document.getElementById('editName').value,
             profile: document.getElementById('editProfile').value,
+            status: document.getElementById('editStatus').value,
             price: document.getElementById('editPrice').value,
             dueDate: document.getElementById('editDueDate').value,
             phone: document.getElementById('editPhone').value
@@ -333,7 +343,7 @@
         alert(err.message);
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Simpan Perubahan';
+        btn.textContent = 'Simpan Permanen';
       }
     });
 

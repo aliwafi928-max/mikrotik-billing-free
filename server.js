@@ -33,7 +33,7 @@ function detectAutoError(secret, isOnline, isolirProfile, logs) {
   if (secret.disabled === 'true') return 'Akun Dinonaktifkan (Disabled)';
   if (secret.profile === isolirProfile) return 'Terisolir (Profile Isolir)';
 
-  const uname = (secret.name || '').toLowerCase();
+  const uname = (secret.name || '').trim().toLowerCase();
   let disconnectCount = 0;
   let lastLogReason = '';
 
@@ -142,16 +142,22 @@ app.get('/api/users', async (req, res) => {
       const actives = await conn.write('/ppp/active/print');
       let logs = [];
       try {
-        // Hanya ambil log bertopik pppoe agar ringan & tidak timeout di Vercel
         const rawLogs = await conn.write('/log/print', ['?topics=pppoe,ppp,info']);
         logs = rawLogs.slice(-150);
       } catch (_) {}
 
-      const activeNames = new Set(actives.map(a => a.name));
+      // Sinkronkan persis dengan daftar PPP Active di WinBox
+      const activeMap = new Map();
+      for (const a of actives) {
+        const key = (a.name || '').trim().toLowerCase();
+        if (key) activeMap.set(key, a);
+      }
 
       return secrets.map(secret => {
         const saved = parseComment(secret.comment);
-        const online = activeNames.has(secret.name);
+        const key = (secret.name || '').trim().toLowerCase();
+        const activeSession = activeMap.get(key);
+        const online = Boolean(activeSession);
         const autoError = detectAutoError(secret, online, cfg.isolirProfile, logs);
 
         return {
@@ -160,6 +166,7 @@ app.get('/api/users', async (req, res) => {
           profile: secret.profile,
           originalProfile: saved.op || (secret.profile !== cfg.isolirProfile ? secret.profile : 'default'),
           online,
+          uptime: activeSession ? (activeSession.uptime || '') : '',
           isIsolated: secret.profile === cfg.isolirProfile || secret.disabled === 'true',
           price: saved.p || 150000,
           phone: saved.wa || '',
@@ -256,12 +263,17 @@ app.post('/api/wa/send', async (req, res) => {
 
   let sentCount = 0;
   let failCount = 0;
+  let lastReason = '';
   for (const t of targets) {
     const r = await sendAutoWA(cfg.fonnteToken, t.phone, t.message);
     if (r.sent) sentCount++;
-    else failCount++;
+    else {
+      failCount++;
+      lastReason = r.reason || 'Unknown error';
+    }
   }
-  res.json({ success: true, message: `Selesai: ${sentCount} pesan WA terkirim, ${failCount} gagal.` });
+  const detail = failCount > 0 ? ` Alasan: ${lastReason}` : '';
+  res.json({ success: true, message: `Selesai: ${sentCount} terkirim, ${failCount} gagal.${detail}` });
 });
 
 app.post('/api/billing/pay', async (req, res) => {

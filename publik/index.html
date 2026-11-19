@@ -1,14 +1,146 @@
-<div class="flex flex-wrap gap-1.5 mb-3">
-        <button type="button" onclick="setQuickError('LOS Merah / Kabel FO Putus')" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-full">LOS / Kabel Putus</button>
-        <button type="button" onclick="setQuickError('Redaman Tinggi / Kabel Bending')" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-full">Redaman Tinggi</button>
-        <button type="button" onclick="setQuickError('Modem Mati / Adaptor Rusak')" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-full">Modem / Adaptor Rusak</button>
-        <button type="button" onclick="setQuickError('Modem Hang / Perlu Restart')" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-full">Modem Hang</button>
-        <button type="button" onclick="setQuickError('Internet Lambat / Ping Tinggi / RTO')" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-full">Lambat / RTO</button>
-        <button type="button" onclick="setQuickError('Sering Putus-Nyambung (DC)')" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-full">Sering DC</button>
-        <button type="button" onclick="setQuickError('WiFi Tidak Muncul / Tidak Bisa Konek')" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-full">WiFi Bermasalah</button>
-        <button type="button" onclick="setQuickError('Minta Ganti Nama / Password WiFi')" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-full">Ganti WiFi</button>
-        <button type="button" onclick="setQuickError('Konektor / Patchcord Rusak')" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-full">Patchcord Rusak</button>
-        <button type="button" onclick="setQuickError('ODP Bermasalah / Port ODP Penuh')" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-full">ODP Bermasalah</button>
-        <button type="button" onclick="setQuickError('Minta Pindah Lokasi / Tarik Ulang Kabel')" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-full">Pindah Lokasi</button>
-        <button type="button" onclick="setQuickError('Butuh Kunjungan Teknisi')" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1 rounded-full">Kunjungan Teknisi</button>
+<button id="btnAutoNotif" onclick="openNotifModal()" class="bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm font-medium">Notif Kendala: OFF</button>
+<!-- MODAL NOTIFIKASI KENDALA OTOMATIS -->
+  <div id="notifModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <h2 class="text-lg font-bold text-white mb-1">Notifikasi Kendala Otomatis</h2>
+      <p class="text-xs text-slate-400 mb-4">Kirim laporan WA otomatis ke Admin/Teknisi saat terdeteksi user LOS, Offline, atau sering DC.</p>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Nomor WA Admin / Teknisi (628...)</label>
+          <input id="adminWaInput" type="text" placeholder="628123456789" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Cek Otomatis Setiap</label>
+          <select id="notifInterval" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+            <option value="60000">1 Menit</option>
+            <option value="180000" selected>3 Menit</option>
+            <option value="300000">5 Menit</option>
+            <option value="600000">10 Menit</option>
+          </select>
+        </div>
+
+        <label class="flex items-center gap-2 text-sm text-slate-200 pt-1 cursor-pointer">
+          <input id="notifEnabled" type="checkbox" class="w-4 h-4 accent-orange-500" />
+          <span>Aktifkan Pemberitahuan Kendala Otomatis</span>
+        </label>
+
+        <div class="flex flex-wrap justify-between gap-2 pt-3">
+          <button type="button" onclick="sendErrorReportNow()" class="bg-orange-600 hover:bg-orange-500 px-3 py-2 rounded-lg text-xs font-semibold">Kirim Laporan Sekarang</button>
+          <div class="flex gap-2">
+            <button type="button" onclick="closeModal('notifModal')" class="bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm">Tutup</button>
+            <button type="button" onclick="saveNotifSettings()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-sm font-semibold">Simpan</button>
+          </div>
+        </div>
       </div>
+    </div>
+  </div>
+  // --- NOTIFIKASI KENDALA OTOMATIS ---
+    let monitorTimer = null;
+
+    function openNotifModal() {
+      const cfg = JSON.parse(localStorage.getItem('notif_cfg') || '{}');
+      document.getElementById('adminWaInput').value = cfg.adminWa || '';
+      document.getElementById('notifInterval').value = cfg.interval || '180000';
+      document.getElementById('notifEnabled').checked = Boolean(cfg.enabled);
+      document.getElementById('notifModal').classList.remove('hidden');
+    }
+
+    function saveNotifSettings() {
+      const cfg = {
+        adminWa: document.getElementById('adminWaInput').value.trim(),
+        interval: Number(document.getElementById('notifInterval').value) || 180000,
+        enabled: document.getElementById('notifEnabled').checked
+      };
+      if (cfg.enabled && !cfg.adminWa) return alert('Isi Nomor WA Admin / Teknisi terlebih dahulu.');
+      localStorage.setItem('notif_cfg', JSON.stringify(cfg));
+      closeModal('notifModal');
+      startErrorMonitor();
+      alert(cfg.enabled ? 'Notifikasi kendala otomatis AKTIF.' : 'Notifikasi kendala otomatis DIMATIKAN.');
+    }
+
+    function startErrorMonitor() {
+      if (monitorTimer) clearInterval(monitorTimer);
+      const cfg = JSON.parse(localStorage.getItem('notif_cfg') || '{}');
+      const btn = document.getElementById('btnAutoNotif');
+
+      if (cfg.enabled && cfg.adminWa) {
+        btn.textContent = 'Notif Kendala: ON';
+        btn.className = 'bg-orange-600 hover:bg-orange-500 px-3 py-2 rounded-lg text-sm font-medium';
+        monitorTimer = setInterval(async () => {
+          await loadData();
+          await checkAndNotifyNewErrors();
+        }, cfg.interval || 180000);
+      } else {
+        btn.textContent = 'Notif Kendala: OFF';
+        btn.className = 'bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm font-medium';
+      }
+    }
+
+    async function checkAndNotifyNewErrors() {
+      const cfg = JSON.parse(localStorage.getItem('notif_cfg') || '{}');
+      const mtCfg = JSON.parse(localStorage.getItem('mt_cfg') || '{}');
+      if (!cfg.enabled || !cfg.adminWa || !mtCfg.waToken) return;
+
+      const notified = JSON.parse(localStorage.getItem('notified_errors') || '{}');
+      const newErrors = [];
+
+      // Cek user yang mengalami kendala baru
+      for (const u of allUsers) {
+        const errText = u.autoError || u.errorNote || '';
+        if (errText) {
+          if (notified[u.name] !== errText) {
+            newErrors.push(`• *${u.name}* (${u.profile}): ${errText}`);
+            notified[u.name] = errText;
+          }
+        } else if (notified[u.name]) {
+          // Hapus dari daftar jika sudah kembali normal
+          delete notified[u.name];
+        }
+      }
+
+      localStorage.setItem('notified_errors', JSON.stringify(notified));
+      if (newErrors.length === 0) return;
+
+      const msg = `*PERINGATAN KENDALA PPPoE*\n\nTerdeteksi ${newErrors.length} gangguan baru:\n${newErrors.join('\n')}`;
+      await fetch('/api/wa/send', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ targets: [{ name: 'Admin', phone: cfg.adminWa, message: msg }] })
+      });
+    }
+
+    async function sendErrorReportNow() {
+      const adminWa = document.getElementById('adminWaInput').value.trim();
+      if (!adminWa) return alert('Isi Nomor WA Admin / Teknisi terlebih dahulu.');
+
+      const list = allUsers
+        .filter(u => u.autoError || u.errorNote)
+        .map(u => `• *${u.name}* (${u.profile}): ${u.autoError || u.errorNote}`);
+
+      if (list.length === 0) return alert('Semua user dalam keadaan normal (tidak ada kendala).');
+
+      const msg = `*LAPORAN KENDALA PPPoE SAAT INI*\nTotal: ${list.length} user bermasalah\n\n${list.join('\n')}`;
+      const mtCfg = JSON.parse(localStorage.getItem('mt_cfg') || '{}');
+
+      if (mtCfg.waToken) {
+        const res = await fetch('/api/wa/send', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ targets: [{ name: 'Admin', phone: adminWa, message: msg }] })
+        });
+        const data = await res.json();
+        alert(data.message);
+      } else {
+        const cleanPhone = adminWa.replace(/[^0-9]/g, '');
+        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+      }
+    }
+
+    // Jalankan monitor otomatis saat berhasil login
+    const origLoadData = loadData;
+    loadData = async function() {
+      await origLoadData();
+      if (!monitorTimer) startErrorMonitor();
+    };

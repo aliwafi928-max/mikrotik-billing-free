@@ -7,9 +7,9 @@ const { RouterOSAPI } = require('node-routeros');
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'publik')));
 
-const DB_FILE = path.join(__dirname, 'billing_data.json');
+const DB_FILE = path.join(__/tmp, 'billing_data.json');
 
 function readDB() {
   if (!fs.existsSync(DB_FILE)) return {};
@@ -208,4 +208,4 @@ app.post('/api/billing/reset-month', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Aplikasi Billing berjalan di port ${PORT}`));
+app.listen(PORT, () => console.log(`Aplikasi Billing berjalan di port ${PORT}`));module.exports = app;

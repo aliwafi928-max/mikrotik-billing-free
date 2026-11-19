@@ -39,7 +39,7 @@ async function withMikrotik(req, callback) {
     user: cfg.user,
     password: cfg.password,
     port: cfg.port,
-    timeout: 5
+    timeout: 10
   });
   conn.on('error', () => {});
   try {
@@ -72,7 +72,20 @@ app.post('/api/login', async (req, res) => {
     });
     res.json({ success: true, message: 'Berhasil terhubung ke MikroTik!' });
   } catch (err) {
-    res.status(401).json({ success: false, message: 'Gagal login MikroTik: ' + err.message });
+    res.status(401).json({ success: false, message: 'Gagal login MikroTik: ' + (err.message || err.errno || 'Koneksi ditolak') });
+  }
+});
+
+// Ambil daftar PPP Profile dari MikroTik
+app.get('/api/profiles', async (req, res) => {
+  try {
+    const profiles = await withMikrotik(req, async (conn) => {
+      const list = await conn.write('/ppp/profile/print');
+      return list.map(p => p.name);
+    });
+    res.json({ success: true, data: profiles });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -110,22 +123,38 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-app.post('/api/users/update', (req, res) => {
+// Update data user + Edit Profile langsung ke MikroTik
+app.post('/api/users/update', async (req, res) => {
   const cfg = getMikrotikConfig(req);
-  const { name, price, phone, dueDate, lastPaid, originalProfile } = req.body;
-  const allDB = readDB();
-  if (!allDB[cfg.host]) allDB[cfg.host] = {};
+  const { id, name, profile, price, phone, dueDate, lastPaid } = req.body;
+  try {
+    if (id && profile) {
+      await withMikrotik(req, async (conn) => {
+        await conn.write('/ppp/secret/set', [`=.id=${id}`, `=profile=${profile}`]);
+        // Putus sesi aktif agar profile/kecepatan baru langsung diterapkan
+        const actives = await conn.write('/ppp/active/print', [`?name=${name}`]);
+        for (const active of actives) {
+          await conn.write('/ppp/active/remove', [`=.id=${active['.id']}`]);
+        }
+      });
+    }
 
-  allDB[cfg.host][name] = {
-    ...(allDB[cfg.host][name] || {}),
-    price: Number(price) || 0,
-    phone: phone || '',
-    dueDate: Math.min(28, Math.max(1, Number(dueDate) || 10)),
-    lastPaid: lastPaid !== undefined ? lastPaid : (allDB[cfg.host][name]?.lastPaid || ''),
-    originalProfile: originalProfile || (allDB[cfg.host][name]?.originalProfile || 'default')
-  };
-  writeDB(allDB);
-  res.json({ success: true });
+    const allDB = readDB();
+    if (!allDB[cfg.host]) allDB[cfg.host] = {};
+
+    allDB[cfg.host][name] = {
+      ...(allDB[cfg.host][name] || {}),
+      price: Number(price) || 0,
+      phone: phone || '',
+      dueDate: Math.min(28, Math.max(1, Number(dueDate) || 10)),
+      lastPaid: lastPaid !== undefined ? lastPaid : (allDB[cfg.host][name]?.lastPaid || ''),
+      originalProfile: (profile && profile !== cfg.isolirProfile) ? profile : (allDB[cfg.host][name]?.originalProfile || 'default')
+    };
+    writeDB(allDB);
+    res.json({ success: true, message: `Data & profile ${name} berhasil diperbarui.` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Gagal update: ' + err.message });
+  }
 });
 
 app.post('/api/billing/pay', async (req, res) => {

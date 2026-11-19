@@ -42,9 +42,15 @@
           </div>
         </div>
 
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Profile Isolir</label>
-          <input id="mtIsolir" type="text" value="isolir" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Profile Isolir</label>
+            <input id="mtIsolir" type="text" value="isolir" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Token Fonnte (Opsional)</label>
+            <input id="waToken" type="text" placeholder="Token WA Auto" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+          </div>
         </div>
 
         <button id="loginBtn" type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition">
@@ -63,10 +69,9 @@
         <p id="routerInfo" class="text-xs text-slate-400 mt-0.5"></p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <button onclick="openWaModal()" class="bg-emerald-600 hover:bg-emerald-500 px-3 py-2 rounded-lg text-sm font-medium">Template WA</button>
-        <button onclick="openNotifModal()" class="bg-orange-600 hover:bg-orange-500 px-3 py-2 rounded-lg text-sm font-medium">Lapor Kendala WA</button>
+        <button onclick="openWaModal()" class="bg-emerald-600 hover:bg-emerald-500 px-3 py-2 rounded-lg text-sm font-medium">WA Otomatis</button>
         <button onclick="loadData()" class="bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm font-medium">Refresh</button>
-        <button onclick="resetMonth()" class="bg-amber-600 hover:bg-amber-500 px-3 py-2 rounded-lg text-sm font-medium">Reset Bulan</button>
+        <button onclick="resetMonth()" class="bg-amber-600 hover:bg-amber-500 px-3 py-2 rounded-lg text-sm font-medium">Reset Bulan Baru</button>
         <button onclick="logout()" class="bg-red-600/80 hover:bg-red-600 px-3 py-2 rounded-lg text-sm font-medium">Keluar</button>
       </div>
     </div>
@@ -161,8 +166,8 @@
         </div>
 
         <div>
-          <label class="block text-xs text-slate-400 mb-1">Nomor WhatsApp (08... atau 628...)</label>
-          <input id="editPhone" type="text" placeholder="085215374079" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+          <label class="block text-xs text-slate-400 mb-1">Nomor WhatsApp (628...)</label>
+          <input id="editPhone" type="text" placeholder="628123456789" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
         </div>
 
         <div class="flex justify-end gap-2 pt-3">
@@ -209,41 +214,34 @@
     </div>
   </div>
 
-  <!-- MODAL TEMPLATE WA (GRATIS MODE WA.ME) -->
+  <!-- MODAL WA OTOMATIS PEMBAYARAN -->
   <div id="waModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-lg shadow-2xl">
-      <h2 class="text-lg font-bold text-white mb-1">Pengaturan Template Pesan WA</h2>
-      <p class="text-xs text-slate-400 mb-4">Mode WA Gratis (langsung buka aplikasi WhatsApp tanpa perlu token/scan QR).</p>
+      <h2 class="text-lg font-bold text-white mb-1">Menu WA Otomatis Pembayaran</h2>
+      <p class="text-xs text-slate-400 mb-4">Atur Token Fonnte & kirim pengingat tagihan ke pelanggan yang belum bayar.</p>
 
       <div class="space-y-3">
         <div>
-          <label class="block text-xs text-slate-400 mb-1">Template Tagihan (Gunakan: {nama}, {harga}, {tempo})</label>
+          <label class="block text-xs text-slate-400 mb-1">Token API Fonnte (Kosongkan jika ingin pakai WA manual/wa.me)</label>
+          <input id="waModalToken" type="text" placeholder="Masukkan token Fonnte Anda..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Template Pesan Tagihan (Gunakan: {nama}, {harga}, {tempo})</label>
           <textarea id="waTemplate" rows="5" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm"></textarea>
         </div>
 
-        <div class="flex justify-end gap-2 pt-2">
-          <button type="button" onclick="closeModal('waModal')" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-sm">Tutup</button>
-          <button type="button" onclick="saveWaSettings()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-semibold">Simpan Template</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL LAPORAN KENDALA KE WA ADMIN / TEKNISI -->
-  <div id="notifModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-      <h2 class="text-lg font-bold text-white mb-1">Kirim Laporan Kendala via WA</h2>
-      <p class="text-xs text-slate-400 mb-4">Kirim daftar seluruh user yang sedang LOS, Offline, atau sering DC ke WA Admin/Teknisi.</p>
-
-      <div class="space-y-3">
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Nomor WA Admin / Teknisi (08... atau 628...)</label>
-          <input id="adminWaInput" type="text" placeholder="085215374079" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-300 flex justify-between items-center">
+          <span>Target Belum Bayar (punya nomor WA):</span>
+          <span id="waTargetCount" class="font-bold text-emerald-400 text-sm">0 user</span>
         </div>
 
-        <div class="flex justify-end gap-2 pt-3">
-          <button type="button" onclick="closeModal('notifModal')" class="bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm">Tutup</button>
-          <button type="button" onclick="sendErrorReportNow()" class="bg-orange-600 hover:bg-orange-500 px-4 py-2 rounded-lg text-sm font-semibold">Buka WA & Kirim Laporan</button>
+        <div class="flex flex-wrap justify-between gap-2 pt-2">
+          <button type="button" onclick="saveWaSettings()" class="bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm">Simpan Pengaturan</button>
+          <div class="flex gap-2">
+            <button type="button" onclick="closeModal('waModal')" class="bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm">Tutup</button>
+            <button type="button" id="sendBulkWaBtn" onclick="sendBulkWa()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-semibold">Kirim Tagihan Massal</button>
+          </div>
         </div>
       </div>
     </div>
@@ -262,21 +260,15 @@
         'x-mt-port': cfg.port || '8728',
         'x-mt-user': cfg.user || '',
         'x-mt-pass': cfg.pass || '',
-        'x-mt-isolir': cfg.isolir || 'isolir'
+        'x-mt-isolir': cfg.isolir || 'isolir',
+        'x-wa-token': cfg.waToken || ''
       };
     }
 
-    // Ubah otomatis 08... menjadi 628...
     function formatPhone(phone) {
       let clean = (phone || '').replace(/[^0-9]/g, '');
       if (clean.startsWith('0')) clean = '62' + clean.slice(1);
       return clean;
-    }
-
-    function openWaLink(phone, message) {
-      const clean = formatPhone(phone);
-      if (!clean) return alert('Nomor WhatsApp belum diisi.');
-      window.open(`https://wa.me/${clean}?text=${encodeURIComponent(message)}`, '_blank');
     }
 
     function formatWaMessage(u) {
@@ -295,6 +287,7 @@
         document.getElementById('mtUser').value = saved.user;
         document.getElementById('mtPass').value = saved.pass;
         document.getElementById('mtIsolir').value = saved.isolir || 'isolir';
+        document.getElementById('waToken').value = saved.waToken || '';
       }
     };
 
@@ -311,7 +304,8 @@
         port: document.getElementById('mtPort').value.trim(),
         user: document.getElementById('mtUser').value.trim(),
         pass: document.getElementById('mtPass').value,
-        isolir: document.getElementById('mtIsolir').value.trim() || 'isolir'
+        isolir: document.getElementById('mtIsolir').value.trim() || 'isolir',
+        waToken: document.getElementById('waToken').value.trim()
       };
       localStorage.setItem('mt_cfg', JSON.stringify(cfg));
 
@@ -414,8 +408,8 @@
             <button onclick='sendSingleWa(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="bg-teal-700 hover:bg-teal-600 px-2 py-1 rounded text-xs" title="Kirim Tagihan WA">WA</button>
             <button onclick='openErrorModal(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="${(u.errorNote || u.autoError) ? 'bg-orange-600 hover:bg-orange-500' : 'bg-slate-700 hover:bg-slate-600'} px-2 py-1 rounded text-xs">Kendala</button>
             <button onclick='openEditModal(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-xs">Edit</button>
-            <button onclick='payUser(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="bg-emerald-600 hover:bg-emerald-500 px-2 py-1 rounded text-xs">Lunas</button>
-            <button onclick='isolateUser(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="bg-rose-600 hover:bg-rose-500 px-2 py-1 rounded text-xs">Isolir</button>
+            <button onclick="payUser('${u.id}', '${u.name}')" class="bg-emerald-600 hover:bg-emerald-500 px-2 py-1 rounded text-xs">Lunas</button>
+            <button onclick="isolateUser('${u.id}', '${u.name}', '${u.profile}')" class="bg-rose-600 hover:bg-rose-500 px-2 py-1 rounded text-xs">Isolir</button>
           </td>
         </tr>
       `).join('');
@@ -509,86 +503,88 @@
       }
     }
 
-    // --- TEMPLATE WA & LAPORAN KENDALA (MODE WA.ME) ---
+    // --- WA OTOMATIS ---
     function openWaModal() {
+      const cfg = JSON.parse(localStorage.getItem('mt_cfg') || '{}');
+      document.getElementById('waModalToken').value = cfg.waToken || '';
       document.getElementById('waTemplate').value = localStorage.getItem('wa_template') || DEFAULT_TEMPLATE;
+      const targets = allUsers.filter(u => u.status !== 'LUNAS' && u.phone && u.phone.trim() !== '');
+      document.getElementById('waTargetCount').textContent = `${targets.length} user`;
       document.getElementById('waModal').classList.remove('hidden');
     }
 
     function saveWaSettings() {
+      const cfg = JSON.parse(localStorage.getItem('mt_cfg') || '{}');
+      cfg.waToken = document.getElementById('waModalToken').value.trim();
+      localStorage.setItem('mt_cfg', JSON.stringify(cfg));
+      document.getElementById('waToken').value = cfg.waToken;
       localStorage.setItem('wa_template', document.getElementById('waTemplate').value);
-      closeModal('waModal');
-      alert('Template pesan WA berhasil disimpan.');
+      alert('Pengaturan WA Otomatis tersimpan.');
     }
 
-    function sendSingleWa(u) {
+    async function sendBulkWa() {
+      saveWaSettings();
+      const targets = allUsers
+        .filter(u => u.status !== 'LUNAS' && u.phone && u.phone.trim() !== '')
+        .map(u => ({ name: u.name, phone: formatPhone(u.phone), message: formatWaMessage(u) }));
+
+      if (targets.length === 0) return alert('Tidak ada user belum bayar yang memiliki nomor WA.');
+      if (!confirm(`Kirim pesan tagihan WA otomatis ke ${targets.length} pelanggan?`)) return;
+
+      const btn = document.getElementById('sendBulkWaBtn');
+      btn.disabled = true;
+      btn.textContent = 'Mengirim...';
+      try {
+        const res = await fetch('/api/wa/send', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ targets })
+        });
+        const data = await res.json();
+        alert(data.message);
+      } catch (err) {
+        alert('Gagal mengirim WA: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Kirim Tagihan Massal';
+      }
+    }
+
+    async function sendSingleWa(u) {
       if (!u.phone) return alert(`Nomor WA untuk ${u.name} belum diisi. Silakan klik Edit terlebih dahulu.`);
-      openWaLink(u.phone, formatWaMessage(u));
-    }
+      const cleanPhone = formatPhone(u.phone);
+      const msg = formatWaMessage(u);
+      const cfg = JSON.parse(localStorage.getItem('mt_cfg') || '{}');
 
-    function openNotifModal() {
-      document.getElementById('adminWaInput').value = localStorage.getItem('admin_wa') || '';
-      document.getElementById('notifModal').classList.remove('hidden');
-    }
-
-    function sendErrorReportNow() {
-      const adminWa = document.getElementById('adminWaInput').value.trim();
-      if (!adminWa) return alert('Isi Nomor WA Admin / Teknisi terlebih dahulu.');
-      localStorage.setItem('admin_wa', adminWa);
-
-      const list = allUsers
-        .filter(u => u.autoError || u.errorNote)
-        .map(u => `• *${u.name}* (${u.profile}): ${u.autoError || u.errorNote}`);
-
-      if (list.length === 0) return alert('Semua user dalam keadaan normal (tidak ada kendala).');
-
-      const msg = `*LAPORAN KENDALA PPPoE SAAT INI*\nTotal: ${list.length} user bermasalah\n\n${list.join('\n')}`;
-      closeModal('notifModal');
-      openWaLink(adminWa, msg);
-    }
-
-    // --- AKSI BILLING + LANGSUNG TAWARKAN KIRIM WA ---
-    async function payUser(u) {
-      if (!confirm(`Tandai ${u.name} sebagai LUNAS?`)) return;
-      const res = await fetch('/api/billing/pay', {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ id: u.id, name: u.name })
-      });
-      const data = await res.json();
-      await loadData();
-
-      if (data.success && u.phone) {
-        const today = new Date().toISOString().split('T')[0];
-        const harga = Number(u.price).toLocaleString('id-ID');
-        if (confirm(`User ${u.name} sudah LUNAS. Kirim struk pembayaran via WhatsApp sekarang?`)) {
-          const msg = `*PEMBAYARAN BERHASIL*\n\nHalo *${u.name}*,\nPembayaran internet sebesar *Rp ${harga}* pada tanggal ${today} telah diterima (*LUNAS*). Layanan aktif kembali. Terima kasih.`;
-          openWaLink(u.phone, msg);
-        }
-      } else {
+      if (cfg.waToken) {
+        if (!confirm(`Kirim tagihan WA otomatis (Fonnte) ke ${u.name}?`)) return;
+        const res = await fetch('/api/wa/send', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ targets: [{ name: u.name, phone: cleanPhone, message: msg }] })
+        });
+        const data = await res.json();
         alert(data.message);
+      } else {
+        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
       }
     }
 
-    async function isolateUser(u) {
-      if (!confirm(`Isolir layanan user ${u.name}?`)) return;
-      const res = await fetch('/api/billing/isolate', {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ id: u.id, name: u.name, currentProfile: u.profile })
-      });
+    // --- AKSI BILLING ---
+    async function payUser(id, name) {
+      if (!confirm(`Tandai ${name} sebagai LUNAS?`)) return;
+      const res = await fetch('/api/billing/pay', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ id, name }) });
       const data = await res.json();
-      await loadData();
+      alert(data.message);
+      loadData();
+    }
 
-      if (data.success && u.phone) {
-        const harga = Number(u.price).toLocaleString('id-ID');
-        if (confirm(`User ${u.name} telah diisolir. Kirim pemberitahuan isolir via WhatsApp sekarang?`)) {
-          const msg = `*PEMBERITAHUAN ISOLIR*\n\nHalo *${u.name}*,\nLayanan internet Anda dinonaktifkan sementara karena melewati jatuh tempo. Tagihan: *Rp ${harga}*. Mohon segera melakukan pembayaran agar layanan aktif kembali.`;
-          openWaLink(u.phone, msg);
-        }
-      } else {
-        alert(data.message);
-      }
+    async function isolateUser(id, name, currentProfile) {
+      if (!confirm(`Isolir layanan user ${name}?`)) return;
+      const res = await fetch('/api/billing/isolate', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ id, name, currentProfile }) });
+      const data = await res.json();
+      alert(data.message);
+      loadData();
     }
 
     async function resetMonth() {

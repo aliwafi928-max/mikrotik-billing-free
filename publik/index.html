@@ -70,7 +70,8 @@
       </div>
       <div class="flex flex-wrap gap-2">
         <button onclick="openWaModal()" class="bg-emerald-600 hover:bg-emerald-500 px-3 py-2 rounded-lg text-sm font-medium">WA Otomatis</button>
-        <button onclick="loadData()" class="bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm font-medium">Refresh</button>
+        <button onclick="openNotifModal()" class="bg-orange-600 hover:bg-orange-500 px-3 py-2 rounded-lg text-sm font-medium">Lapor Kendala WA</button>
+        <button onclick="loadData()" class="bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm font-medium">Sinkron WinBox</button>
         <button onclick="resetMonth()" class="bg-amber-600 hover:bg-amber-500 px-3 py-2 rounded-lg text-sm font-medium">Reset Bulan Baru</button>
         <button onclick="logout()" class="bg-red-600/80 hover:bg-red-600 px-3 py-2 rounded-lg text-sm font-medium">Keluar</button>
       </div>
@@ -82,8 +83,8 @@
         <p class="text-xs text-slate-400">Total User PPPoE</p>
         <p id="statTotal" class="text-2xl font-bold text-white mt-1">0</p>
       </div>
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-        <p class="text-xs text-slate-400">Sedang Online</p>
+      <div onclick="setFilter('ONLINE')" class="cursor-pointer bg-slate-900 border border-slate-800 hover:border-emerald-600 rounded-xl p-4">
+        <p class="text-xs text-slate-400">Online (WinBox)</p>
         <p id="statOnline" class="text-2xl font-bold text-emerald-400 mt-1">0</p>
       </div>
       <div onclick="setFilter('LUNAS')" class="cursor-pointer bg-slate-900 border border-slate-800 hover:border-blue-600 rounded-xl p-4">
@@ -95,7 +96,7 @@
         <p id="statUnpaid" class="text-2xl font-bold text-rose-400 mt-1">0</p>
       </div>
       <div onclick="setFilter('ERROR')" class="cursor-pointer bg-slate-900 border border-slate-800 hover:border-orange-500 rounded-xl p-4 col-span-2 md:col-span-1">
-        <p class="text-xs text-slate-400">User Kendala / Eror</p>
+        <p class="text-xs text-slate-400">Offline / LOS / Kendala</p>
         <p id="statError" class="text-2xl font-bold text-orange-400 mt-1">0</p>
       </div>
     </div>
@@ -106,9 +107,10 @@
         <input id="searchInput" oninput="renderTable()" type="text" placeholder="Cari username, profile, WA, atau kendala..." class="w-full sm:w-80 bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:border-blue-500" />
         <select id="filterStatus" onchange="renderTable()" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
           <option value="ALL">Semua User</option>
+          <option value="ONLINE">Online (WinBox)</option>
+          <option value="ERROR">Offline / LOS / Kendala</option>
           <option value="UNPAID">Belum Bayar / Isolir</option>
           <option value="LUNAS">Sudah Lunas</option>
-          <option value="ERROR">Ada Kendala / Eror</option>
         </select>
       </div>
       <p id="searchCount" class="text-xs text-slate-400"></p>
@@ -121,7 +123,7 @@
           <tr>
             <th class="p-3">User PPPoE</th>
             <th class="p-3">Profile</th>
-            <th class="p-3">Koneksi</th>
+            <th class="p-3">Koneksi WinBox</th>
             <th class="p-3">Tagihan</th>
             <th class="p-3">Status</th>
             <th class="p-3 text-right">Aksi</th>
@@ -247,6 +249,31 @@
     </div>
   </div>
 
+  <!-- MODAL LAPOR KENDALA KE WA ADMIN / TEKNISI -->
+  <div id="notifModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <h2 class="text-lg font-bold text-white mb-1">Lapor Kendala ke WA Teknisi</h2>
+      <p class="text-xs text-slate-400 mb-4">Kirim daftar user yang sedang Offline / LOS / Kendala sesuai data WinBox.</p>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Nomor WA Admin / Teknisi (628... atau 08...)</label>
+          <input id="adminWaInput" type="text" placeholder="6285215374079" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+        </div>
+
+        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-300 flex justify-between items-center">
+          <span>User Offline / LOS / Kendala saat ini:</span>
+          <span id="errTargetCount" class="font-bold text-orange-400 text-sm">0 user</span>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3">
+          <button type="button" onclick="closeModal('notifModal')" class="bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm">Tutup</button>
+          <button type="button" id="sendErrReportBtn" onclick="sendErrorReportNow()" class="bg-orange-600 hover:bg-orange-500 px-4 py-2 rounded-lg text-sm font-semibold">Kirim Laporan Sekarang</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     let allUsers = [];
     let allProfiles = [];
@@ -346,12 +373,16 @@
       }
     }
 
+    function isUserProblem(u) {
+      return !u.online || Boolean((u.errorNote && u.errorNote.trim()) || (u.autoError && u.autoError.trim()));
+    }
+
     function updateStats() {
       document.getElementById('statTotal').textContent = allUsers.length;
       document.getElementById('statOnline').textContent = allUsers.filter(u => u.online).length;
       document.getElementById('statLunas').textContent = allUsers.filter(u => u.status === 'LUNAS').length;
       document.getElementById('statUnpaid').textContent = allUsers.filter(u => u.status !== 'LUNAS' || u.isIsolated).length;
-      document.getElementById('statError').textContent = allUsers.filter(u => (u.errorNote && u.errorNote.trim()) || (u.autoError && u.autoError.trim())).length;
+      document.getElementById('statError').textContent = allUsers.filter(isUserProblem).length;
     }
 
     function setFilter(val) {
@@ -371,9 +402,10 @@
           (u.errorNote || '').toLowerCase().includes(q) ||
           (u.autoError || '').toLowerCase().includes(q);
         if (!matchText) return false;
+        if (filter === 'ONLINE') return u.online;
         if (filter === 'LUNAS') return u.status === 'LUNAS';
         if (filter === 'UNPAID') return u.status !== 'LUNAS' || u.isIsolated;
-        if (filter === 'ERROR') return Boolean((u.errorNote && u.errorNote.trim()) || (u.autoError && u.autoError.trim()));
+        if (filter === 'ERROR') return isUserProblem(u);
         return true;
       });
 
@@ -391,8 +423,8 @@
             <span class="px-2 py-1 rounded bg-slate-800 text-xs text-slate-200">${u.profile}</span>
           </td>
           <td class="p-3">
-            <span class="px-2 py-0.5 rounded-full text-xs ${u.online ? 'bg-emerald-950 text-emerald-400 border border-emerald-700' : 'bg-slate-800 text-slate-400'}">
-              ${u.online ? 'Online' : 'Offline'}
+            <span class="px-2 py-0.5 rounded-full text-xs ${u.online ? 'bg-emerald-950 text-emerald-400 border border-emerald-700' : 'bg-rose-950/70 text-rose-400 border border-rose-700/60'}">
+              ${u.online ? `Online${u.uptime ? ` (${u.uptime})` : ''}` : 'Offline'}
             </span>
           </td>
           <td class="p-3">
@@ -406,7 +438,7 @@
           </td>
           <td class="p-3 text-right space-x-1 whitespace-nowrap">
             <button onclick='sendSingleWa(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="bg-teal-700 hover:bg-teal-600 px-2 py-1 rounded text-xs" title="Kirim Tagihan WA">WA</button>
-            <button onclick='openErrorModal(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="${(u.errorNote || u.autoError) ? 'bg-orange-600 hover:bg-orange-500' : 'bg-slate-700 hover:bg-slate-600'} px-2 py-1 rounded text-xs">Kendala</button>
+            <button onclick='openErrorModal(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="${isUserProblem(u) ? 'bg-orange-600 hover:bg-orange-500' : 'bg-slate-700 hover:bg-slate-600'} px-2 py-1 rounded text-xs">Kendala</button>
             <button onclick='openEditModal(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-xs">Edit</button>
             <button onclick="payUser('${u.id}', '${u.name}')" class="bg-emerald-600 hover:bg-emerald-500 px-2 py-1 rounded text-xs">Lunas</button>
             <button onclick="isolateUser('${u.id}', '${u.name}', '${u.profile}')" class="bg-rose-600 hover:bg-rose-500 px-2 py-1 rounded text-xs">Isolir</button>
@@ -503,7 +535,56 @@
       }
     }
 
-    // --- WA OTOMATIS ---
+    // --- WA OTOMATIS & LAPOR KENDALA ---
+    async function openNotifModal() {
+      await loadData();
+      document.getElementById('adminWaInput').value = localStorage.getItem('admin_wa') || '';
+      const count = allUsers.filter(isUserProblem).length;
+      document.getElementById('errTargetCount').textContent = `${count} user`;
+      document.getElementById('notifModal').classList.remove('hidden');
+    }
+
+    async function sendErrorReportNow() {
+      await loadData();
+      const adminWa = formatPhone(document.getElementById('adminWaInput').value.trim());
+      if (!adminWa) return alert('Isi Nomor WA Admin / Teknisi terlebih dahulu.');
+      localStorage.setItem('admin_wa', adminWa);
+
+      const list = allUsers
+        .filter(isUserProblem)
+        .map(u => {
+          const reason = u.errorNote || u.autoError || (u.online ? 'Kendala' : 'Offline / LOS');
+          return `• *${u.name}* (${u.profile}): ${reason}`;
+        });
+
+      if (list.length === 0) return alert('Semua user PPPoE sedang Online & normal di WinBox.');
+
+      const msg = `*LAPORAN KENDALA / OFFLINE PPPoE*\nTotal: ${list.length} user\n\n${list.join('\n')}`;
+      const cfg = JSON.parse(localStorage.getItem('mt_cfg') || '{}');
+
+      if (cfg.waToken) {
+        const btn = document.getElementById('sendErrReportBtn');
+        btn.disabled = true;
+        btn.textContent = 'Mengirim...';
+        try {
+          const res = await fetch('/api/wa/send', {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ targets: [{ name: 'Admin/Teknisi', phone: adminWa, message: msg }] })
+          });
+          const data = await res.json();
+          alert(data.message);
+          closeModal('notifModal');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Kirim Laporan Sekarang';
+        }
+      } else {
+        closeModal('notifModal');
+        window.open(`https://wa.me/${adminWa}?text=${encodeURIComponent(msg)}`, '_blank');
+      }
+    }
+
     function openWaModal() {
       const cfg = JSON.parse(localStorage.getItem('mt_cfg') || '{}');
       document.getElementById('waModalToken').value = cfg.waToken || '';

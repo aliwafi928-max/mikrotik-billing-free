@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
 const path = require('path');
 const { RouterOSAPI } = require('node-routeros');
 
@@ -9,15 +8,25 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'publik')));
 
-const DB_FILE = path.join('/tmp', 'billing_data.json');
-
-function readDB() {
-  if (!fs.existsSync(DB_FILE)) return {};
-  return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+// Baca data billing yang tersimpan permanen di kolom comment MikroTik
+function parseComment(comment) {
+  if (!comment || !comment.startsWith('BILLING:')) return {};
+  try {
+    return JSON.parse(comment.slice(8));
+  } catch {
+    return {};
+  }
 }
 
-function writeDB(data) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+function buildComment(data) {
+  return 'BILLING:' + JSON.stringify({
+    p: Number(data.price) || 150000,
+    wa: data.phone || '',
+    d: Math.min(28, Math.max(1, Number(data.dueDate) || 10)),
+    s: data.status || 'BELUM BAYAR',
+    lp: data.lastPaid || '',
+    op: data.originalProfile || 'default'
+  });
 }
 
 function getMikrotikConfig(req) {
@@ -76,7 +85,6 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Ambil daftar PPP Profile dari MikroTik
 app.get('/api/profiles', async (req, res) => {
   try {
     const profiles = await withMikrotik(req, async (conn) => {
@@ -91,29 +99,25 @@ app.get('/api/profiles', async (req, res) => {
 
 app.get('/api/users', async (req, res) => {
   try {
-    const cfg = getMikrotikConfig(req);
-    const allDB = readDB();
-    const db = allDB[cfg.host] || {};
-
-    const result = await withMikrotik(req, async (conn) => {
+    const result = await withMikrotik(req, async (conn, cfg) => {
       const secrets = await conn.write('/ppp/secret/print');
       const actives = await conn.write('/ppp/active/print');
       const activeNames = new Set(actives.map(a => a.name));
 
       return secrets.map(secret => {
-        const saved = db[secret.name] || {};
+        const saved = parseComment(secret.comment);
         return {
           id: secret['.id'],
           name: secret.name,
           profile: secret.profile,
-          originalProfile: saved.originalProfile || (secret.profile !== cfg.isolirProfile ? secret.profile : 'default'),
+          originalProfile: saved.op || (secret.profile !== cfg.isolirProfile ? secret.profile : 'default'),
           online: activeNames.has(secret.name),
           isIsolated: secret.profile === cfg.isolirProfile || secret.disabled === 'true',
-          price: saved.price || 150000,
-          phone: saved.phone || '',
-          dueDate: saved.dueDate || 10,
-          status: saved.status || 'BELUM BAYAR',
-          lastPaid: saved.lastPaid || ''
+          price: saved.p || 150000,
+          phone: saved.wa || '',
+          dueDate: saved.d || 10,
+          status: saved.s || 'BELUM BAYAR',
+          lastPaid: saved.lp || ''
         };
       });
     });
@@ -123,96 +127,129 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// Update data user + Edit Profile langsung ke MikroTik
+// Edit Profile & Pembayaran (Tersimpan Permanen di MikroTik)
 app.post('/api/users/update', async (req, res) => {
-  const cfg = getMikrotikConfig(req);
-  const { id, name, profile, price, phone, dueDate, lastPaid } = req.body;
+  const { id, name, profile, price, phone, dueDate, status, lastPaid } = req.body;
   try {
-    if (id && profile) {
-      await withMikrotik(req, async (conn) => {
-        await conn.write('/ppp/secret/set', [`=.id=${id}`, `=profile=${profile}`]);
-        // Putus sesi aktif agar profile/kecepatan baru langsung diterapkan
+    await withMikrotik(req, async (conn, cfg) => {
+      const secrets = await conn.write('/ppp/secret/print', [`?.id=${id}`]);
+      const current = secrets[0] || {};
+      const oldData = parseComment(current.comment);
+
+      const newStatus = status || oldData.s || 'BELUM BAYAR';
+      const todayISO = new Date().toISOString().split('T')[0];
+      const newLastPaid = newStatus === 'LUNAS' ? (lastPaid || oldData.lp || todayISO) : (lastPaid !== undefined ? lastPaid : oldData.lp || '');
+      const origProfile = (profile && profile !== cfg.isolirProfile) ? profile : (oldData.op || current.profile || 'default');
+
+      const commentStr = buildComment({
+        price,
+        phone,
+        dueDate,
+        status: newStatus,
+        lastPaid: newLastPaid,
+        originalProfile: origProfile
+      });
+
+      const params = [`=.id=${id}`, `=comment=${commentStr}`];
+      if (profile) params.push(`=profile=${profile}`);
+
+      await conn.write('/ppp/secret/set', params);
+
+      // Putus sesi aktif hanya jika profile berubah
+      if (profile && profile !== current.profile) {
         const actives = await conn.write('/ppp/active/print', [`?name=${name}`]);
         for (const active of actives) {
           await conn.write('/ppp/active/remove', [`=.id=${active['.id']}`]);
         }
-      });
-    }
-
-    const allDB = readDB();
-    if (!allDB[cfg.host]) allDB[cfg.host] = {};
-
-    allDB[cfg.host][name] = {
-      ...(allDB[cfg.host][name] || {}),
-      price: Number(price) || 0,
-      phone: phone || '',
-      dueDate: Math.min(28, Math.max(1, Number(dueDate) || 10)),
-      lastPaid: lastPaid !== undefined ? lastPaid : (allDB[cfg.host][name]?.lastPaid || ''),
-      originalProfile: (profile && profile !== cfg.isolirProfile) ? profile : (allDB[cfg.host][name]?.originalProfile || 'default')
-    };
-    writeDB(allDB);
-    res.json({ success: true, message: `Data & profile ${name} berhasil diperbarui.` });
+      }
+    });
+    res.json({ success: true, message: `Data & pembayaran ${name} tersimpan permanen di MikroTik.` });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Gagal update: ' + err.message });
+    res.status(500).json({ success: false, message: 'Gagal menyimpan: ' + err.message });
   }
 });
 
 app.post('/api/billing/pay', async (req, res) => {
-  const cfg = getMikrotikConfig(req);
   const { id, name } = req.body;
   try {
-    const allDB = readDB();
-    if (!allDB[cfg.host]) allDB[cfg.host] = {};
-    const userRecord = allDB[cfg.host][name] || {};
-    const targetProfile = userRecord.originalProfile || 'default';
     const todayISO = new Date().toISOString().split('T')[0];
+    let savedData = {};
 
-    await withMikrotik(req, async (conn) => {
-      await conn.write('/ppp/secret/set', [`=.id=${id}`, `=profile=${targetProfile}`, `=disabled=no`]);
+    await withMikrotik(req, async (conn, cfg) => {
+      const secrets = await conn.write('/ppp/secret/print', [`?.id=${id}`]);
+      const current = secrets[0] || {};
+      const oldData = parseComment(current.comment);
+      const targetProfile = oldData.op || (current.profile !== cfg.isolirProfile ? current.profile : 'default');
+
+      savedData = {
+        price: oldData.p || 150000,
+        phone: oldData.wa || '',
+        dueDate: oldData.d || 10,
+        status: 'LUNAS',
+        lastPaid: todayISO,
+        originalProfile: targetProfile
+      };
+
+      await conn.write('/ppp/secret/set', [
+        `=.id=${id}`,
+        `=profile=${targetProfile}`,
+        `=disabled=no`,
+        `=comment=${buildComment(savedData)}`
+      ]);
+
       const actives = await conn.write('/ppp/active/print', [`?name=${name}`]);
       for (const active of actives) {
         await conn.write('/ppp/active/remove', [`=.id=${active['.id']}`]);
       }
     });
 
-    allDB[cfg.host][name] = { ...userRecord, status: 'LUNAS', lastPaid: todayISO };
-    writeDB(allDB);
-
-    const harga = Number(userRecord.price || 150000).toLocaleString('id-ID');
+    const cfg = getMikrotikConfig(req);
+    const harga = Number(savedData.price).toLocaleString('id-ID');
     const waMsg = `*PEMBAYARAN BERHASIL*\n\nHalo *${name}*,\nPembayaran internet sebesar Rp ${harga} pada tanggal ${todayISO} telah diterima (*LUNAS*). Layanan aktif kembali.`;
-    const waResult = await sendAutoWA(cfg.fonnteToken, userRecord.phone, waMsg);
+    const waResult = await sendAutoWA(cfg.fonnteToken, savedData.phone, waMsg);
 
-    res.json({ success: true, message: `User ${name} LUNAS. ${waResult.sent ? 'WA terkirim!' : ''}` });
+    res.json({ success: true, message: `User ${name} LUNAS & tersimpan permanen. ${waResult.sent ? 'WA terkirim!' : ''}` });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 app.post('/api/billing/isolate', async (req, res) => {
-  const cfg = getMikrotikConfig(req);
   const { id, name, currentProfile } = req.body;
   try {
-    const allDB = readDB();
-    if (!allDB[cfg.host]) allDB[cfg.host] = {};
-    const userRecord = allDB[cfg.host][name] || {};
-    if (currentProfile && currentProfile !== cfg.isolirProfile) {
-      userRecord.originalProfile = currentProfile;
-    }
+    let savedData = {};
 
-    await withMikrotik(req, async (conn) => {
-      await conn.write('/ppp/secret/set', [`=.id=${id}`, `=profile=${cfg.isolirProfile}`]);
+    await withMikrotik(req, async (conn, cfg) => {
+      const secrets = await conn.write('/ppp/secret/print', [`?.id=${id}`]);
+      const current = secrets[0] || {};
+      const oldData = parseComment(current.comment);
+      const origProfile = (currentProfile && currentProfile !== cfg.isolirProfile) ? currentProfile : (oldData.op || 'default');
+
+      savedData = {
+        price: oldData.p || 150000,
+        phone: oldData.wa || '',
+        dueDate: oldData.d || 10,
+        status: 'BELUM BAYAR',
+        lastPaid: oldData.lp || '',
+        originalProfile: origProfile
+      };
+
+      await conn.write('/ppp/secret/set', [
+        `=.id=${id}`,
+        `=profile=${cfg.isolirProfile}`,
+        `=comment=${buildComment(savedData)}`
+      ]);
+
       const actives = await conn.write('/ppp/active/print', [`?name=${name}`]);
       for (const active of actives) {
         await conn.write('/ppp/active/remove', [`=.id=${active['.id']}`]);
       }
     });
 
-    allDB[cfg.host][name] = { ...userRecord, status: 'BELUM BAYAR' };
-    writeDB(allDB);
-
-    const harga = Number(userRecord.price || 150000).toLocaleString('id-ID');
+    const cfg = getMikrotikConfig(req);
+    const harga = Number(savedData.price).toLocaleString('id-ID');
     const waMsg = `*PEMBERITAHUAN ISOLIR*\n\nHalo *${name}*,\nLayanan internet Anda dinonaktifkan sementara karena melewati jatuh tempo. Tagihan: Rp ${harga}.`;
-    const waResult = await sendAutoWA(cfg.fonnteToken, userRecord.phone, waMsg);
+    const waResult = await sendAutoWA(cfg.fonnteToken, savedData.phone, waMsg);
 
     res.json({ success: true, message: `User ${name} diisolir. ${waResult.sent ? 'WA terkirim!' : ''}` });
   } catch (err) {
@@ -220,14 +257,29 @@ app.post('/api/billing/isolate', async (req, res) => {
   }
 });
 
-app.post('/api/billing/reset-month', (req, res) => {
-  const cfg = getMikrotikConfig(req);
-  const allDB = readDB();
-  if (allDB[cfg.host]) {
-    Object.keys(allDB[cfg.host]).forEach(key => { allDB[cfg.host][key].status = 'BELUM BAYAR'; });
-    writeDB(allDB);
+app.post('/api/billing/reset-month', async (req, res) => {
+  try {
+    await withMikrotik(req, async (conn, cfg) => {
+      const secrets = await conn.write('/ppp/secret/print');
+      for (const secret of secrets) {
+        const oldData = parseComment(secret.comment);
+        if (oldData.s === 'LUNAS') {
+          const updated = buildComment({
+            price: oldData.p || 150000,
+            phone: oldData.wa || '',
+            dueDate: oldData.d || 10,
+            status: 'BELUM BAYAR',
+            lastPaid: oldData.lp || '',
+            originalProfile: oldData.op || (secret.profile !== cfg.isolirProfile ? secret.profile : 'default')
+          });
+          await conn.write('/ppp/secret/set', [`=.id=${secret['.id']}`, `=comment=${updated}`]);
+        }
+      }
+    });
+    res.json({ success: true, message: 'Semua status tagihan berhasil direset ke BELUM BAYAR.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
-  res.json({ success: true, message: 'Semua tagihan router ini direset ke BELUM BAYAR.' });
 });
 
 if (!process.env.VERCEL) {

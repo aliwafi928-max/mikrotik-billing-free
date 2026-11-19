@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'publik')));
 
-// Baca data billing yang tersimpan permanen di kolom comment MikroTik
+// Baca data billing & kendala yang tersimpan permanen di kolom comment MikroTik
 function parseComment(comment) {
   if (!comment || !comment.startsWith('BILLING:')) return {};
   try {
@@ -25,7 +25,8 @@ function buildComment(data) {
     d: Math.min(28, Math.max(1, Number(data.dueDate) || 10)),
     s: data.status || 'BELUM BAYAR',
     lp: data.lastPaid || '',
-    op: data.originalProfile || 'default'
+    op: data.originalProfile || 'default',
+    e: data.errorNote || ''
   });
 }
 
@@ -68,7 +69,7 @@ async function sendAutoWA(token, phone, message) {
       body: JSON.stringify({ target: phone, message })
     });
     const data = await res.json();
-    return { sent: data.status === true };
+    return { sent: data.status === true, reason: data.reason || '' };
   } catch (err) {
     return { sent: false, reason: err.message };
   }
@@ -117,7 +118,8 @@ app.get('/api/users', async (req, res) => {
           phone: saved.wa || '',
           dueDate: saved.d || 10,
           status: saved.s || 'BELUM BAYAR',
-          lastPaid: saved.lp || ''
+          lastPaid: saved.lp || '',
+          errorNote: saved.e || ''
         };
       });
     });
@@ -147,7 +149,8 @@ app.post('/api/users/update', async (req, res) => {
         dueDate,
         status: newStatus,
         lastPaid: newLastPaid,
-        originalProfile: origProfile
+        originalProfile: origProfile,
+        errorNote: oldData.e || ''
       });
 
       const params = [`=.id=${id}`, `=comment=${commentStr}`];
@@ -155,7 +158,6 @@ app.post('/api/users/update', async (req, res) => {
 
       await conn.write('/ppp/secret/set', params);
 
-      // Putus sesi aktif hanya jika profile berubah
       if (profile && profile !== current.profile) {
         const actives = await conn.write('/ppp/active/print', [`?name=${name}`]);
         for (const active of actives) {
@@ -167,6 +169,54 @@ app.post('/api/users/update', async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, message: 'Gagal menyimpan: ' + err.message });
   }
+});
+
+// Simpan / Hapus Catatan Kendala / Eror User PPPoE
+app.post('/api/users/error', async (req, res) => {
+  const { id, name, errorNote } = req.body;
+  try {
+    await withMikrotik(req, async (conn, cfg) => {
+      const secrets = await conn.write('/ppp/secret/print', [`?.id=${id}`]);
+      const current = secrets[0] || {};
+      const oldData = parseComment(current.comment);
+
+      const commentStr = buildComment({
+        price: oldData.p || 150000,
+        phone: oldData.wa || '',
+        dueDate: oldData.d || 10,
+        status: oldData.s || 'BELUM BAYAR',
+        lastPaid: oldData.lp || '',
+        originalProfile: oldData.op || (current.profile !== cfg.isolirProfile ? current.profile : 'default'),
+        errorNote: (errorNote || '').trim()
+      });
+
+      await conn.write('/ppp/secret/set', [`=.id=${id}`, `=comment=${commentStr}`]);
+    });
+    res.json({ success: true, message: errorNote ? `Kendala untuk ${name} berhasil dicatat.` : `Kendala ${name} ditandai selesai.` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Gagal menyimpan kendala: ' + err.message });
+  }
+});
+
+// Kirim WA Otomatis (Satuan atau Massal ke Belum Bayar) via Fonnte
+app.post('/api/wa/send', async (req, res) => {
+  const cfg = getMikrotikConfig(req);
+  const { targets } = req.body; // [{ phone, message, name }]
+  if (!cfg.fonnteToken) {
+    return res.status(400).json({ success: false, message: 'Token Fonnte belum diisi di pengaturan WA Otomatis.' });
+  }
+  if (!Array.isArray(targets) || targets.length === 0) {
+    return res.status(400).json({ success: false, message: 'Tidak ada target nomor WA yang valid.' });
+  }
+
+  let sentCount = 0;
+  let failCount = 0;
+  for (const t of targets) {
+    const r = await sendAutoWA(cfg.fonnteToken, t.phone, t.message);
+    if (r.sent) sentCount++;
+    else failCount++;
+  }
+  res.json({ success: true, message: `Selesai: ${sentCount} pesan WA terkirim, ${failCount} gagal.` });
 });
 
 app.post('/api/billing/pay', async (req, res) => {
@@ -187,7 +237,8 @@ app.post('/api/billing/pay', async (req, res) => {
         dueDate: oldData.d || 10,
         status: 'LUNAS',
         lastPaid: todayISO,
-        originalProfile: targetProfile
+        originalProfile: targetProfile,
+        errorNote: oldData.e || ''
       };
 
       await conn.write('/ppp/secret/set', [
@@ -231,7 +282,8 @@ app.post('/api/billing/isolate', async (req, res) => {
         dueDate: oldData.d || 10,
         status: 'BELUM BAYAR',
         lastPaid: oldData.lp || '',
-        originalProfile: origProfile
+        originalProfile: origProfile,
+        errorNote: oldData.e || ''
       };
 
       await conn.write('/ppp/secret/set', [
@@ -270,7 +322,8 @@ app.post('/api/billing/reset-month', async (req, res) => {
             dueDate: oldData.d || 10,
             status: 'BELUM BAYAR',
             lastPaid: oldData.lp || '',
-            originalProfile: oldData.op || (secret.profile !== cfg.isolirProfile ? secret.profile : 'default')
+            originalProfile: oldData.op || (secret.profile !== cfg.isolirProfile ? secret.profile : 'default'),
+            errorNote: oldData.e || ''
           });
           await conn.write('/ppp/secret/set', [`=.id=${secret['.id']}`, `=comment=${updated}`]);
         }

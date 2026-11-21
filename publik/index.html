@@ -7,12 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
   <style>
-    .sidebar-gradient {
-      background: radial-gradient(circle at 25% 12%, #1346a8 0%, #092154 45%, #041130 100%);
-    }
-    .router-glow {
-      background: radial-gradient(ellipse at center, rgba(37, 130, 255, 0.45) 0%, rgba(4, 17, 48, 0) 70%);
-    }
+    .sidebar-gradient { background: radial-gradient(circle at 25% 12%, #1346a8 0%, #092154 45%, #041130 100%); }
+    .router-glow { background: radial-gradient(ellipse at center, rgba(37, 130, 255, 0.45) 0%, rgba(4, 17, 48, 0) 70%); }
     .card-blue { background: linear-gradient(135deg, #1d8cf8 0%, #0d6efd 100%); }
     .card-green { background: linear-gradient(135deg, #19b36b 0%, #0b8a4b 100%); }
     .card-orange { background: linear-gradient(135deg, #ffae19 0%, #f5820d 100%); }
@@ -34,7 +30,7 @@
         <p class="text-slate-500 text-xs mt-1">Masukkan data Router MikroTik Anda untuk masuk</p>
       </div>
 
-      <div id="loginError" class="hidden bg-red-50 border border-red-300 text-red-700 text-xs rounded-lg p-3 mb-4"></div>
+      <div id="loginError" class="hidden bg-red-50 border border-red-300 text-red-700 text-xs rounded-lg p-3 mb-4 break-words"></div>
 
       <form id="loginForm" class="space-y-3.5">
         <div class="grid grid-cols-3 gap-3">
@@ -80,8 +76,9 @@
 
   <!-- DASHBOARD UTAMA -->
   <div id="dashboardScreen" class="hidden min-h-screen flex">
-    <div id="sidebarBackdrop" onclick="toggleSidebar()" class="hidden fixed inset-0 bg-black/50 z-30 md:hidden"></div>
+    <div id="sidebarBackdrop" onclick="toggleSidebar(false)" class="hidden fixed inset-0 bg-black/50 z-30 md:hidden"></div>
 
+    <!-- SIDEBAR BIRU TUA -->
     <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-40 w-60 sidebar-gradient text-white flex flex-col justify-between shrink-0 transform -translate-x-full md:translate-x-0 transition-transform duration-200 shadow-xl">
       <div>
         <div class="pt-6 pb-5 px-4 text-center">
@@ -103,64 +100,43 @@
           </button>
 
           <button id="menu-users" onclick="switchView('users', 'ALL')" class="menu-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
-            <span class="flex items-center gap-3">
-              <i class="fa-solid fa-user w-4 text-center"></i>
-              <span>User</span>
-            </span>
+            <span class="flex items-center gap-3"><i class="fa-solid fa-user w-4 text-center"></i><span>User</span></span>
             <span id="sideBadgeTotal" class="text-[11px] bg-white/15 px-2 py-0.5 rounded-full">0</span>
           </button>
 
           <button id="menu-isolir" onclick="switchView('isolir')" class="menu-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
-            <span class="flex items-center gap-3">
-              <i class="fa-solid fa-ban w-4 text-center text-rose-400"></i>
-              <span>Isolir (ON / OFF)</span>
-            </span>
+            <span class="flex items-center gap-3"><i class="fa-solid fa-ban w-4 text-center text-rose-400"></i><span>Isolir (ON / OFF)</span></span>
             <span id="sideBadgeIsolir" class="text-[11px] bg-rose-500/40 text-rose-100 px-2 py-0.5 rounded-full font-bold">0</span>
           </button>
 
-          <button id="menu-profiles" onclick="openBulkModal()" class="menu-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
+          <button onclick="openBulkModal()" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
             <i class="fa-solid fa-gear w-4 text-center"></i>
             <span>Profile & Tarif</span>
           </button>
 
           <button id="menu-unpaid" onclick="switchView('users', 'UNPAID')" class="menu-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
-            <span class="flex items-center gap-3">
-              <i class="fa-solid fa-ticket w-4 text-center"></i>
-              <span>Belum Bayar</span>
-            </span>
+            <span class="flex items-center gap-3"><i class="fa-solid fa-ticket w-4 text-center"></i><span>Belum Bayar</span></span>
             <span id="sideBadgeUnpaid" class="text-[11px] bg-amber-500/30 text-amber-200 px-2 py-0.5 rounded-full">0</span>
           </button>
 
           <button id="menu-lunas" onclick="switchView('users', 'LUNAS')" class="menu-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
-            <span class="flex items-center gap-3">
-              <i class="fa-solid fa-credit-card w-4 text-center"></i>
-              <span>Pembayaran</span>
-            </span>
+            <span class="flex items-center gap-3"><i class="fa-solid fa-credit-card w-4 text-center"></i><span>Pembayaran</span></span>
             <span id="sideBadgeLunas" class="text-[11px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full">0</span>
           </button>
 
           <button id="menu-error" onclick="switchView('users', 'ERROR')" class="menu-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
-            <span class="flex items-center gap-3">
-              <i class="fa-solid fa-file-lines w-4 text-center"></i>
-              <span>Laporan Kendala</span>
-            </span>
+            <span class="flex items-center gap-3"><i class="fa-solid fa-file-lines w-4 text-center"></i><span>Laporan Kendala</span></span>
             <span id="sideBadgeError" class="text-[11px] bg-orange-500/30 text-orange-200 px-2 py-0.5 rounded-full">0</span>
           </button>
 
           <button onclick="openWaModal()" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
-            <span class="flex items-center gap-3">
-              <i class="fa-solid fa-sliders w-4 text-center"></i>
-              <span>WA Massal (50+)</span>
-            </span>
+            <span class="flex items-center gap-3"><i class="fa-brands fa-whatsapp w-4 text-center text-emerald-400"></i><span>WA Massal (50+)</span></span>
             <i class="fa-solid fa-chevron-right text-[10px] opacity-60"></i>
           </button>
 
           <div>
             <button onclick="toggleToolsMenu()" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
-              <span class="flex items-center gap-3">
-                <i class="fa-solid fa-wrench w-4 text-center"></i>
-                <span>Tools</span>
-              </span>
+              <span class="flex items-center gap-3"><i class="fa-solid fa-wrench w-4 text-center"></i><span>Tools</span></span>
               <i id="toolsChevron" class="fa-solid fa-chevron-right text-[10px] opacity-60 transition-transform"></i>
             </button>
             <div id="toolsSubmenu" class="hidden pl-9 pr-2 py-1 space-y-1 text-xs">
@@ -197,6 +173,7 @@
       </div>
     </aside>
 
+    <!-- AREA KANAN -->
     <div class="flex-1 flex flex-col min-w-0">
       <header class="bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex items-center justify-between gap-3 sticky top-0 z-20">
         <div class="flex items-center gap-3">
@@ -235,12 +212,11 @@
       </header>
 
       <main class="p-4 md:p-6 space-y-5 max-w-[1440px] w-full mx-auto">
+        <!-- 4 KARTU RINGKASAN -->
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div onclick="switchView('users', 'ALL')" class="cursor-pointer card-blue rounded-2xl p-5 text-white shadow-md hover:shadow-lg transition relative overflow-hidden">
             <div class="flex items-center gap-4 relative z-10">
-              <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl">
-                <i class="fa-solid fa-users"></i>
-              </div>
+              <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl"><i class="fa-solid fa-users"></i></div>
               <div>
                 <div id="cardTotalUser" class="text-2xl md:text-3xl font-extrabold leading-tight">0</div>
                 <div class="text-xs text-blue-100 font-medium">Total User</div>
@@ -251,9 +227,7 @@
 
           <div onclick="switchView('users', 'ONLINE')" class="cursor-pointer card-green rounded-2xl p-5 text-white shadow-md hover:shadow-lg transition relative overflow-hidden">
             <div class="flex items-center gap-4 relative z-10">
-              <div class="w-12 h-12 rounded-full bg-white text-emerald-600 flex items-center justify-center text-xl shadow">
-                <i class="fa-solid fa-check"></i>
-              </div>
+              <div class="w-12 h-12 rounded-full bg-white text-emerald-600 flex items-center justify-center text-xl shadow"><i class="fa-solid fa-check"></i></div>
               <div>
                 <div id="cardActiveUser" class="text-2xl md:text-3xl font-extrabold leading-tight">0</div>
                 <div class="text-xs text-emerald-100 font-medium">User Aktif (Online)</div>
@@ -264,12 +238,10 @@
 
           <div onclick="switchView('isolir')" class="cursor-pointer card-orange rounded-2xl p-5 text-white shadow-md hover:shadow-lg transition relative overflow-hidden">
             <div class="flex items-center gap-4 relative z-10">
-              <div class="w-12 h-12 rounded-full bg-white text-amber-500 flex items-center justify-center text-xl shadow">
-                <i class="fa-solid fa-ban"></i>
-              </div>
+              <div class="w-12 h-12 rounded-full bg-white text-amber-500 flex items-center justify-center text-xl shadow"><i class="fa-solid fa-ban"></i></div>
               <div>
                 <div id="cardExpiredUser" class="text-2xl md:text-3xl font-extrabold leading-tight">0</div>
-                <div class="text-xs text-amber-100 font-medium">Terisolir / Belum Bayar</div>
+                <div class="text-xs text-amber-100 font-medium">Terisolir (ON)</div>
               </div>
             </div>
             <i class="fa-regular fa-clock text-6xl text-white/10 absolute -right-2 -bottom-2"></i>
@@ -277,9 +249,7 @@
 
           <div onclick="switchView('users', 'LUNAS')" class="cursor-pointer card-purple rounded-2xl p-5 text-white shadow-md hover:shadow-lg transition relative overflow-hidden">
             <div class="flex items-center gap-4 relative z-10">
-              <div class="w-12 h-12 rounded-full bg-white text-purple-600 flex items-center justify-center text-base font-extrabold shadow">
-                Rp
-              </div>
+              <div class="w-12 h-12 rounded-full bg-white text-purple-600 flex items-center justify-center text-base font-extrabold shadow">Rp</div>
               <div>
                 <div id="cardTotalTransaksi" class="text-xl md:text-2xl font-extrabold leading-tight">Rp 0</div>
                 <div class="text-xs text-purple-100 font-medium">Total Transaksi Lunas</div>
@@ -289,30 +259,26 @@
           </div>
         </div>
 
+        <!-- PANEL KONTROL ISOLIR -->
         <div id="isolirControlPanel" class="hidden bg-white border border-rose-200 rounded-2xl p-5 shadow-sm">
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex items-start gap-3">
-              <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg shrink-0">
-                <i class="fa-solid fa-shield-halved"></i>
-              </div>
+              <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg shrink-0"><i class="fa-solid fa-shield-halved"></i></div>
               <div>
                 <h2 class="font-bold text-slate-800 text-base">Kontrol Isolir Otomatis (ON / OFF)</h2>
-                <p class="text-xs text-slate-500">Sakelar Isolir memindahkan profile di MikroTik ke <span id="isolirProfileLabel" class="font-bold text-rose-600">profile-isolir</span> dan memutus sesi aktif pelanggan.</p>
+                <p class="text-xs text-slate-500">Sakelar Isolir memindahkan profile MikroTik ke <span id="isolirProfileLabel" class="font-bold text-rose-600">profile-isolir</span> dan memutus sesi aktif pelanggan.</p>
               </div>
             </div>
-
             <div class="flex flex-wrap items-center gap-2">
               <button onclick="autoIsolateAllUnpaid()" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow">
-                <i class="fa-solid fa-power-off"></i>
-                <span>Isolir ON Semua Belum Bayar</span>
+                <i class="fa-solid fa-power-off"></i><span>Isolir ON Semua Belum Bayar</span>
               </button>
-              <button onclick="loadData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold">
-                Sinkron Status
-              </button>
+              <button onclick="loadData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold">Sinkron Status</button>
             </div>
           </div>
         </div>
 
+        <!-- GRAFIK + STATUS MIKROTIK -->
         <div id="dashboardWidgets" class="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div class="lg:col-span-2 bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -331,12 +297,9 @@
           <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
             <div>
               <div class="flex items-center gap-2.5 mb-4">
-                <div class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs">
-                  <i class="fa-solid fa-server"></i>
-                </div>
+                <div class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs"><i class="fa-solid fa-server"></i></div>
                 <h2 class="font-bold text-slate-800 text-base">Status MikroTik</h2>
               </div>
-
               <div class="flex items-center justify-between mb-4">
                 <span class="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 font-bold text-xs px-3 py-1.5 rounded-full">
                   <span class="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px]"><i class="fa-solid fa-check"></i></span>
@@ -347,51 +310,31 @@
                   <div class="text-[10px] text-red-600 font-semibold">RouterOS API</div>
                 </div>
               </div>
-
               <div class="space-y-2 text-xs text-slate-600 border-t border-slate-100 pt-3">
-                <div class="flex justify-between">
-                  <span class="text-slate-400">Host / Domain</span>
-                  <span id="statusHost" class="font-semibold text-slate-800">-</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-slate-400">Port API</span>
-                  <span id="statusPort" class="font-semibold text-slate-800">-</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-slate-400">Profile Isolir</span>
-                  <span id="statusIsolir" class="font-semibold text-rose-600">-</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-slate-400">Sedang Terisolir</span>
-                  <span id="statusIsolatedCnt" class="font-semibold text-rose-600">0 user</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-slate-400">Online / Total</span>
-                  <span id="statusRatio" class="font-semibold text-emerald-600">0 / 0</span>
-                </div>
+                <div class="flex justify-between"><span class="text-slate-400">Host / Domain</span><span id="statusHost" class="font-semibold text-slate-800">-</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">Port API</span><span id="statusPort" class="font-semibold text-slate-800">-</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">Profile Isolir</span><span id="statusIsolir" class="font-semibold text-rose-600">-</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">Sedang Terisolir</span><span id="statusIsolatedCnt" class="font-semibold text-rose-600">0 user</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">Online / Total</span><span id="statusRatio" class="font-semibold text-emerald-600">0 / 0</span></div>
               </div>
             </div>
-
             <button onclick="loadData()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow transition">
-              <i class="fa-solid fa-rotate"></i>
-              <span>Cek Status</span>
+              <i class="fa-solid fa-rotate"></i><span>Cek Status</span>
             </button>
           </div>
         </div>
 
+        <!-- TABEL USER + AKTIVITAS -->
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
           <div class="xl:col-span-2 bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div class="flex items-center gap-2.5">
-                <div class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs">
-                  <i class="fa-solid fa-list-check"></i>
-                </div>
+                <div class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs"><i class="fa-solid fa-list-check"></i></div>
                 <div>
                   <h2 class="font-bold text-slate-800 text-base">Daftar Pelanggan & Kontrol Isolir PPPoE</h2>
                   <p id="searchCount" class="text-[11px] text-slate-400">Memuat data...</p>
                 </div>
               </div>
-
               <div class="flex flex-wrap gap-2">
                 <button onclick="openWaModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">WA Massal (50+)</button>
                 <button onclick="openBulkModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Set Massal</button>
@@ -422,9 +365,10 @@
                     <th class="py-2.5 px-2">Koneksi</th>
                     <th class="py-2.5 px-2">Profile</th>
                     <th class="py-2.5 px-2">Tagihan (Rp)</th>
+                    <th class="py-2.5 px-2">Tempo</th>
                     <th class="py-2.5 px-2">No. WA</th>
                     <th class="py-2.5 px-2">Status & Bayar</th>
-                    <th class="py-2.5 px-2 text-center">Isolir ON/OFF</th>
+                    <th class="py-2.5 px-2 text-center">Isolir</th>
                     <th class="py-2.5 px-3 text-right">Aksi</th>
                   </tr>
                 </thead>
@@ -450,7 +394,6 @@
     <div class="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-md shadow-2xl">
       <h2 class="text-lg font-bold text-slate-800 mb-1">Set Tagihan Massal</h2>
       <p class="text-xs text-slate-500 mb-4">Terapkan nominal tagihan ke seluruh user dengan profile yang dipilih.</p>
-
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">Profile PPPoE</label>
@@ -482,15 +425,14 @@
     </div>
   </div>
 
-  <!-- MODAL WA OTOMATIS & ANTI-SPAM 50+ USER -->
+  <!-- MODAL WA MASSAL ANTI-SPAM 50+ USER -->
   <div id="waModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
     <div class="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-lg shadow-2xl">
       <h2 class="text-lg font-bold text-slate-800 mb-1">WA Massal Otomatis (Aman 50+ User)</h2>
-      <p class="text-xs text-slate-500 mb-4">Menggunakan jeda acak antar pesan + istirahat otomatis tiap 15 pesan agar nomor WA aman dari spam/blokir.</p>
-
+      <p class="text-xs text-slate-500 mb-4">Menggunakan jeda acak antar pesan + jeda istirahat otomatis tiap 15 pesan agar nomor WA aman dari spam.</p>
       <div class="space-y-3">
         <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">Token API Fonnte (Opsional — kosongkan untuk mode antrean wa.me)</label>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Token API Fonnte (Kosongkan untuk antrean wa.me)</label>
           <input id="waModalToken" type="text" placeholder="Masukkan token Fonnte..." class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800" />
         </div>
         <div class="grid grid-cols-3 gap-2.5">
@@ -515,7 +457,7 @@
           <span class="text-slate-600">Target belum bayar (punya nomor WA):</span>
           <span id="waBulkTargetInfo" class="font-bold text-emerald-700">0 user</span>
         </div>
-        <div id="waProgressBox" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 font-medium"></div>
+        <div id="waProgressBox" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 font-medium break-words"></div>
         <div class="flex flex-wrap justify-between items-center gap-2 pt-2">
           <div class="flex gap-1.5">
             <button type="button" id="startBulkWaBtn" onclick="sendBulkWa()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-semibold">Mulai Kirim Massal</button>
@@ -534,8 +476,7 @@
   <div id="notifModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
     <div class="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-md shadow-2xl">
       <h2 class="text-lg font-bold text-slate-800 mb-1">Lapor Kendala ke WA Teknisi</h2>
-      <p class="text-xs text-slate-500 mb-4">Kirim daftar user yang sedang Offline / Kendala ke WA Admin/Teknisi.</p>
-
+      <p class="text-xs text-slate-500 mb-4">Kirim daftar semua user yang sedang Offline / LOS / Kendala ke WA Admin/Teknisi.</p>
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">Nomor WA Admin / Teknisi (628...)</label>
@@ -561,12 +502,21 @@
     const PRESET_PRICES = [50000, 75000, 100000, 125000, 150000];
     const DEFAULT_TEMPLATE = `*PENGINGAT TAGIHAN INTERNET*\n\nHalo *{nama}*,\nTagihan internet bulan ini sebesar *Rp {harga}* jatuh tempo tanggal *{tempo}*.\nMohon segera melakukan pembayaran agar layanan tetap aktif. Terima kasih.`;
 
+    function esc(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     async function safeJson(res) {
       const text = await res.text();
       try {
         return JSON.parse(text);
       } catch {
-        throw new Error(`Respon server bukan JSON (Status ${res.status}): ${text.slice(0, 120)}`);
+        throw new Error(`Respon server bukan JSON (Status ${res.status}): ${text.slice(0, 140)}`);
       }
     }
 
@@ -584,7 +534,7 @@
     }
 
     function formatPhone(phone) {
-      let clean = (phone || '').replace(/[^0-9]/g, '');
+      let clean = String(phone || '').replace(/[^0-9]/g, '');
       if (clean.startsWith('0')) clean = '62' + clean.slice(1);
       return clean;
     }
@@ -594,8 +544,7 @@
     }
 
     function addActivity(text, color = 'blue') {
-      const now = new Date();
-      const time = now.toTimeString().slice(0, 5);
+      const time = new Date().toTimeString().slice(0, 5);
       activityLogs.unshift({ time, text, color });
       if (activityLogs.length > 8) activityLogs.pop();
       renderActivity();
@@ -607,11 +556,11 @@
         box.innerHTML = '<p class="text-slate-400 text-xs">Belum ada aktivitas baru.</p>';
         return;
       }
-      const dotColors = { green: 'bg-emerald-500', blue: 'bg-blue-600', orange: 'bg-amber-500', red: 'bg-rose-500' };
+      const dots = { green: 'bg-emerald-500', blue: 'bg-blue-600', orange: 'bg-amber-500', red: 'bg-rose-500' };
       box.innerHTML = activityLogs.map((a, idx) => `
         <div class="flex items-start gap-3 relative">
           <div class="flex flex-col items-center">
-            <span class="w-2.5 h-2.5 rounded-full ${dotColors[a.color] || 'bg-blue-600'} mt-1"></span>
+            <span class="w-2.5 h-2.5 rounded-full ${dots[a.color] || 'bg-blue-600'} mt-1"></span>
             ${idx < activityLogs.length - 1 ? '<span class="w-0.5 h-7 bg-slate-200 mt-1"></span>' : ''}
           </div>
           <div class="flex-1 flex gap-3">
@@ -623,27 +572,27 @@
     }
 
     function startClock() {
-      const update = () => {
+      const tick = () => {
         const now = new Date();
         document.getElementById('liveClock').textContent = now.toTimeString().slice(0, 8);
         document.getElementById('liveDate').textContent = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
       };
-      update();
-      setInterval(update, 1000);
+      tick();
+      setInterval(tick, 1000);
     }
 
-    window.onload = () => {
+    window.addEventListener('DOMContentLoaded', () => {
       startClock();
       const saved = JSON.parse(localStorage.getItem('mt_cfg') || 'null');
       if (saved && saved.host) {
         document.getElementById('mtHost').value = saved.host;
-        document.getElementById('mtPort').value = saved.port;
-        document.getElementById('mtUser').value = saved.user;
-        document.getElementById('mtPass').value = saved.pass;
+        document.getElementById('mtPort').value = saved.port || '8728';
+        document.getElementById('mtUser').value = saved.user || '';
+        document.getElementById('mtPass').value = saved.pass || '';
         document.getElementById('mtIsolir').value = saved.isolir || 'profile-isolir';
         document.getElementById('waToken').value = saved.waToken || '';
       }
-    };
+    });
 
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -668,7 +617,7 @@
       try {
         const res = await fetch('/api/login', { method: 'POST', headers: getHeaders() });
         const data = await safeJson(res);
-        if (!data.success) throw new Error(data.message);
+        if (!data.success) throw new Error(data.message || 'Gagal login MikroTik');
 
         if (data.isolirProfile) {
           cfg.isolir = data.isolirProfile;
@@ -683,7 +632,7 @@
         document.getElementById('statusIsolir').textContent = cfg.isolir;
         document.getElementById('isolirProfileLabel').textContent = cfg.isolir;
 
-        addActivity(`Terhubung ke Router ${cfg.host}:${cfg.port}`, 'green');
+        addActivity(`Terhubung ke Router ${esc(cfg.host)}:${esc(cfg.port)}`, 'green');
         await loadData();
       } catch (err) {
         errBox.textContent = err.message;
@@ -703,8 +652,8 @@
         const uData = await safeJson(uRes);
         const pData = await safeJson(pRes);
 
-        if (uData.success) allUsers = uData.data;
-        if (pData.success) allProfiles = pData.data;
+        if (uData.success && Array.isArray(uData.data)) allUsers = uData.data;
+        if (pData.success && Array.isArray(pData.data)) allProfiles = pData.data;
 
         populateProfileFilter();
         updateSummary();
@@ -757,11 +706,9 @@
 
       const activeSeries = [0.72, 0.85, 0.90, 0.94, 0.96, 0.98, 1].map(r => Math.max(0, Math.round(online * r)));
       const unpaidSeries = [1.15, 1.25, 1.35, 1.30, 1.10, 1.20, 1].map(r => Math.max(0, Math.round(unpaid * r)));
-
       const maxVal = Math.max(total, ...activeSeries, ...unpaidSeries, 10);
       const w = 560, h = 185, padL = 36, padR = 16, padT = 16, padB = 28;
-      const plotW = w - padL - padR;
-      const plotH = h - padT - padB;
+      const plotW = w - padL - padR, plotH = h - padT - padB;
       const toX = idx => padL + (idx * plotW) / 6;
       const toY = val => padT + plotH - (val / maxVal) * plotH;
 
@@ -795,7 +742,7 @@
       const sel = document.getElementById('filterProfile');
       const cur = sel.value;
       const list = [...new Set([...allProfiles, ...allUsers.map(u => u.profile).filter(Boolean)])];
-      sel.innerHTML = '<option value="ALL">Semua Profile</option>' + list.map(p => `<option value="${p}">${p}</option>`).join('');
+      sel.innerHTML = '<option value="ALL">Semua Profile</option>' + list.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
       if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
     }
 
@@ -854,11 +801,11 @@
       const filtered = allUsers.filter(u => {
         if (profFilter !== 'ALL' && u.profile !== profFilter) return false;
         const matchText =
-          u.name.toLowerCase().includes(q) ||
-          (u.profile || '').toLowerCase().includes(q) ||
-          (u.phone || '').toLowerCase().includes(q) ||
-          (u.errorNote || '').toLowerCase().includes(q) ||
-          (u.autoError || '').toLowerCase().includes(q);
+          String(u.name || '').toLowerCase().includes(q) ||
+          String(u.profile || '').toLowerCase().includes(q) ||
+          String(u.phone || '').toLowerCase().includes(q) ||
+          String(u.errorNote || '').toLowerCase().includes(q) ||
+          String(u.autoError || '').toLowerCase().includes(q);
         if (!matchText) return false;
         if (filter === 'ISOLATED') return u.isIsolated;
         if (filter === 'ONLINE') return u.online;
@@ -874,12 +821,12 @@
       document.getElementById('userTableBody').innerHTML = filtered.map(u => {
         const priceNum = Number(u.price) || 150000;
         const kendalaLabel = u.errorNote || u.autoError || '';
-        const uidAttr = encodeURIComponent(u.id);
+        const uidAttr = encodeURIComponent(String(u.id || ''));
         return `
           <tr class="hover:bg-slate-50/90 ${u.isIsolated ? 'bg-rose-50/40' : ''}">
             <td class="py-2.5 px-3 align-top">
-              <div class="font-bold text-slate-800">${u.name}</div>
-              ${kendalaLabel ? `<div class="text-[11px] text-orange-600 mt-0.5">${kendalaLabel}</div>` : ''}
+              <div class="font-bold text-slate-800">${esc(u.name)}</div>
+              ${kendalaLabel ? `<div class="text-[11px] text-orange-600 mt-0.5">${esc(kendalaLabel)}</div>` : ''}
             </td>
             <td class="py-2.5 px-2 align-top">
               <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${u.online ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}">
@@ -888,7 +835,7 @@
             </td>
             <td class="py-2.5 px-2 align-top">
               <select onchange="saveInline(decodeURIComponent('${uidAttr}'), { profile: this.value })" class="bg-white border border-slate-300 rounded-md px-1.5 py-1 text-xs ${u.isIsolated ? 'text-rose-600 font-bold border-rose-300' : 'text-slate-700'}">
-                ${profileOptions.map(p => `<option value="${p}" ${p === u.profile ? 'selected' : ''}>${p}</option>`).join('')}
+                ${profileOptions.map(p => `<option value="${esc(p)}" ${p === u.profile ? 'selected' : ''}>${esc(p)}</option>`).join('')}
               </select>
             </td>
             <td class="py-2.5 px-2 align-top">
@@ -898,15 +845,18 @@
               </select>
             </td>
             <td class="py-2.5 px-2 align-top">
-              <input type="text" value="${u.phone || ''}" placeholder="62812..." onchange="saveInline(decodeURIComponent('${uidAttr}'), { phone: this.value.trim() })" class="w-28 bg-white border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-800" />
+              <input type="number" min="1" max="28" value="${Number(u.dueDate) || 10}" onchange="saveInline(decodeURIComponent('${uidAttr}'), { dueDate: Number(this.value) })" class="w-11 bg-white border border-slate-300 rounded-md px-1 py-1 text-xs text-slate-800 text-center" />
+            </td>
+            <td class="py-2.5 px-2 align-top">
+              <input type="text" value="${esc(u.phone || '')}" placeholder="62812..." onchange="saveInline(decodeURIComponent('${uidAttr}'), { phone: this.value.trim() })" class="w-28 bg-white border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-800" />
             </td>
             <td class="py-2.5 px-2 align-top">
               <div class="mb-1">
                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${u.status === 'LUNAS' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">
-                  ${u.status}
+                  ${esc(u.status)}
                 </span>
               </div>
-              <input type="date" value="${u.lastPaid || ''}" onchange="saveInline(decodeURIComponent('${uidAttr}'), { lastPaid: this.value })" class="w-28 bg-white border border-slate-300 rounded-md px-1.5 py-0.5 text-[11px] text-slate-600" />
+              <input type="date" value="${esc(u.lastPaid || '')}" onchange="saveInline(decodeURIComponent('${uidAttr}'), { lastPaid: this.value })" class="w-28 bg-white border border-slate-300 rounded-md px-1.5 py-0.5 text-[11px] text-slate-600" />
             </td>
             <td class="py-2.5 px-2 align-top text-center">
               <button type="button" onclick="toggleIsolirById(decodeURIComponent('${uidAttr}'))" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold transition shadow-sm ${u.isIsolated ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}">
@@ -943,7 +893,7 @@
         });
         const data = await safeJson(res);
         if (!data.success) throw new Error(data.message);
-        addActivity(`Data user <b>${u.name}</b> diperbarui`, 'blue');
+        addActivity(`Data user <b>${esc(u.name)}</b> diperbarui`, 'blue');
         await loadData();
       } catch (err) {
         alert('Gagal menyimpan: ' + err.message);
@@ -964,7 +914,7 @@
         });
         const data = await safeJson(res);
         if (!data.success) throw new Error(data.message);
-        addActivity(`Isolir <b>${label}</b> untuk user <b>${u.name}</b>`, u.isIsolated ? 'green' : 'red');
+        addActivity(`Isolir <b>${label}</b> untuk user <b>${esc(u.name)}</b>`, u.isIsolated ? 'green' : 'red');
         await loadData();
       } catch (err) {
         alert(err.message);
@@ -990,7 +940,7 @@
     function openBulkModal() {
       const sel = document.getElementById('bulkProfile');
       const list = [...new Set([...allProfiles, ...allUsers.map(u => u.profile).filter(Boolean)])];
-      sel.innerHTML = list.map(p => `<option value="${p}">${p}</option>`).join('');
+      sel.innerHTML = list.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
       updateBulkCount();
       document.getElementById('bulkModal').classList.remove('hidden');
     }
@@ -1016,7 +966,7 @@
           await saveInline(u.id, { price, dueDate });
         }
         closeModal('bulkModal');
-        addActivity(`Set tagihan massal profile <b>${prof}</b> (Rp ${price.toLocaleString('id-ID')})`, 'blue');
+        addActivity(`Set tagihan massal profile <b>${esc(prof)}</b> (Rp ${price.toLocaleString('id-ID')})`, 'blue');
         alert(`Tagihan Rp ${price.toLocaleString('id-ID')} diterapkan ke ${targets.length} user.`);
       } finally {
         btn.disabled = false;
@@ -1024,7 +974,6 @@
       }
     }
 
-    // --- PENGIRIMAN WA MASSAL 50+ USER BERJEDA ANTI-SPAM ---
     function openWaModal() {
       const cfg = JSON.parse(localStorage.getItem('mt_cfg') || '{}');
       document.getElementById('waModalToken').value = cfg.waToken || '';
@@ -1032,8 +981,7 @@
       document.getElementById('waDelayMax').value = cfg.delayMax || 9;
       document.getElementById('waBatchPause').value = cfg.batchPause || 20;
       document.getElementById('waTemplate').value = localStorage.getItem('wa_template') || DEFAULT_TEMPLATE;
-
-      const validTargets = allUsers.filter(u => u.status !== 'LUNAS' && u.phone && u.phone.trim() !== '');
+      const validTargets = allUsers.filter(u => u.status !== 'LUNAS' && u.phone && String(u.phone).trim() !== '');
       document.getElementById('waBulkTargetInfo').textContent = `${validTargets.length} user`;
       document.getElementById('waModal').classList.remove('hidden');
     }
@@ -1062,7 +1010,7 @@
       bulkWaRunning = false;
     }
 
-  async function sendBulkWa() {
+    async function sendBulkWa() {
       if (bulkWaRunning) return;
       saveWaSettings();
       const cfg = JSON.parse(localStorage.getItem('mt_cfg') || '{}');
@@ -1072,29 +1020,20 @@
 
       const targets = allUsers
         .filter(u => u.status !== 'LUNAS' && u.phone && String(u.phone).trim() !== '')
-        .map(u => ({
-          name: u.name,
-          phone: formatPhone(u.phone),
-          message: formatWaMessage(u)
-        }))
+        .map(u => ({ name: u.name, phone: formatPhone(u.phone), message: formatWaMessage(u) }))
         .filter(t => t.phone.length >= 9);
 
-      if (!targets.length) {
-        return alert('Tidak ada user belum bayar yang memiliki nomor WA valid.');
-      }
-
-      if (!confirm(`Kirim WA otomatis ke ${targets.length} user?\nJeda acak: ${delayMin}-${delayMax} detik/pesan + jeda ekstra ${batchPause} detik tiap 15 pesan.`)) {
-        return;
-      }
+      if (!targets.length) return alert('Tidak ada user belum bayar yang memiliki nomor WA valid.');
+      if (!confirm(`Kirim WA otomatis ke ${targets.length} user?\nJeda acak: ${delayMin}-${delayMax} detik/pesan + jeda ekstra ${batchPause} detik tiap 15 pesan.`)) return;
 
       bulkWaRunning = true;
       const startBtn = document.getElementById('startBulkWaBtn');
       const stopBtn = document.getElementById('stopBulkWaBtn');
       const progBox = document.getElementById('waProgressBox');
 
-      if (startBtn) startBtn.disabled = true;
-      if (stopBtn) stopBtn.classList.remove('hidden');
-      if (progBox) progBox.classList.remove('hidden');
+      startBtn.disabled = true;
+      stopBtn.classList.remove('hidden');
+      progBox.classList.remove('hidden');
 
       let okTotal = 0;
       let errTotal = 0;
@@ -1102,16 +1041,12 @@
 
       for (let i = 0; i < targets.length; i++) {
         if (!bulkWaRunning) {
-          if (progBox) {
-            progBox.textContent = `Dihentikan pada pesan ke-${i} dari ${targets.length}. Berhasil: ${okTotal}, Gagal: ${errTotal}.`;
-          }
+          progBox.textContent = `Dihentikan pada pesan ke-${i} dari ${targets.length}. Berhasil: ${okTotal}, Gagal: ${errTotal}.`;
           break;
         }
 
         const t = targets[i];
-        if (progBox) {
-          progBox.textContent = `[${i + 1}/${targets.length}] Mengirim ke ${t.name} (${t.phone})...`;
-        }
+        progBox.textContent = `[${i + 1}/${targets.length}] Mengirim ke ${t.name} (${t.phone})...`;
 
         if (cfg.waToken) {
           try {
@@ -1122,9 +1057,8 @@
             });
             const data = await safeJson(res);
             const sentInStep = Number(data.sentCount) || (data.success ? 1 : 0);
-            if (sentInStep > 0) {
-              okTotal += sentInStep;
-            } else {
+            if (sentInStep > 0) okTotal += sentInStep;
+            else {
               errTotal++;
               lastFailMsg = data.message || 'Gagal kirim dari server';
             }
@@ -1145,11 +1079,9 @@
 
           for (let s = waitSec; s > 0; s--) {
             if (!bulkWaRunning) break;
-            if (progBox) {
-              progBox.textContent = isBatchBreak
-                ? `[${i + 1}/${targets.length}] Istirahat anti-spam batch (tiap 15 user): lanjut dalam ${s} detik...`
-                : `[${i + 1}/${targets.length}] Terkirim (${t.name}). Jeda acak anti-spam: ${s} detik...`;
-            }
+            progBox.textContent = isBatchBreak
+              ? `[${i + 1}/${targets.length}] Istirahat anti-spam batch (tiap 15 user): lanjut dalam ${s} detik...`
+              : `[${i + 1}/${targets.length}] Selesai (${t.name}). Jeda acak anti-spam: ${s} detik...`;
             await sleepClient(1000);
           }
         }
@@ -1159,63 +1091,9 @@
         const ringkasan = lastFailMsg
           ? `Selesai ${targets.length} user! Berhasil: ${okTotal}, Gagal: ${errTotal} (${lastFailMsg}).`
           : `Selesai seluruh ${targets.length} user! Berhasil: ${okTotal}, Gagal: ${errTotal}.`;
-        if (progBox) progBox.textContent = ringkasan;
+        progBox.textContent = ringkasan;
         addActivity(`WA massal selesai (${okTotal}/${targets.length} terkirim)`, okTotal > 0 ? 'green' : 'red');
         alert(ringkasan);
-      }
-
-      bulkWaRunning = false;
-      if (startBtn) startBtn.disabled = false;
-      if (stopBtn) stopBtn.classList.add('hidden');
-    }
-      let okTotal = 0;
-      let errTotal = 0;
-
-      for (let i = 0; i < targets.length; i++) {
-        if (!bulkWaRunning) {
-          progBox.textContent = `Dihentikan pada pesan ke-${i} dari ${targets.length}. Terkirim: ${okTotal}, Gagal: ${errTotal}.`;
-          break;
-        }
-
-        const t = targets[i];
-        progBox.textContent = `[${i + 1}/${targets.length}] Mengirim ke ${t.name} (${t.phone})...`;
-
-        if (cfg.waToken) {
-          try {
-            const res = await fetch('/api/wa/send', {
-              method: 'POST',
-              headers: getHeaders(),
-              body: JSON.stringify({ targets: [t] })
-            });
-            const data = await safeJson(res);
-            if (data.success) okTotal++; else errTotal++;
-          } catch (_) {
-            errTotal++;
-          }
-        } else {
-          window.open(`https://wa.me/${t.phone}?text=${encodeURIComponent(t.message)}`, '_blank');
-          okTotal++;
-        }
-
-        if (i < targets.length - 1 && bulkWaRunning) {
-          const isBatchBreak = (i + 1) % 15 === 0;
-          const waitSec = isBatchBreak
-            ? batchPause
-            : (Math.floor(Math.random() * (delayMax - delayMin + 1)) + delayMin);
-
-          for (let s = waitSec; s > 0; s--) {
-            if (!bulkWaRunning) break;
-            progBox.textContent = isBatchBreak
-              ? `[${i + 1}/${targets.length}] Istirahat anti-spam batch (tiap 15 user): lanjut dalam ${s} detik...`
-              : `[${i + 1}/${targets.length}] Terkirim (${t.name}). Jeda acak anti-spam: ${s} detik...`;
-            await sleepClient(1000);
-          }
-        }
-      }
-
-      if (bulkWaRunning) {
-        progBox.textContent = `Selesai seluruh ${targets.length} user! Berhasil: ${okTotal}, Gagal: ${errTotal}.`;
-        addActivity(`WA massal selesai (${okTotal}/${targets.length} terkirim)`, 'green');
       }
 
       bulkWaRunning = false;
@@ -1246,14 +1124,18 @@
       const cfg = JSON.parse(localStorage.getItem('mt_cfg') || '{}');
 
       if (cfg.waToken) {
-        const res = await fetch('/api/wa/send', {
-          method: 'POST',
-          headers: getHeaders(),
-          body: JSON.stringify({ targets: [{ name: 'Admin/Teknisi', phone: adminWa, message: msg }] })
-        });
-        const data = await safeJson(res);
-        alert(data.message);
-        closeModal('notifModal');
+        try {
+          const res = await fetch('/api/wa/send', {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ targets: [{ name: 'Admin/Teknisi', phone: adminWa, message: msg }] })
+          });
+          const data = await safeJson(res);
+          alert(data.message);
+          closeModal('notifModal');
+        } catch (err) {
+          alert(err.message);
+        }
       } else {
         closeModal('notifModal');
         window.open(`https://wa.me/${adminWa}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -1271,13 +1153,17 @@
 
       if (cfg.waToken) {
         if (!confirm(`Kirim tagihan WA otomatis ke ${u.name}?`)) return;
-        const res = await fetch('/api/wa/send', {
-          method: 'POST',
-          headers: getHeaders(),
-          body: JSON.stringify({ targets: [{ name: u.name, phone: cleanPhone, message: msg }] })
-        });
-        const data = await safeJson(res);
-        alert(data.message);
+        try {
+          const res = await fetch('/api/wa/send', {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ targets: [{ name: u.name, phone: cleanPhone, message: msg }] })
+          });
+          const data = await safeJson(res);
+          alert(data.message);
+        } catch (err) {
+          alert(err.message);
+        }
       } else {
         window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
       }
@@ -1287,24 +1173,34 @@
       const u = allUsers.find(item => item.id === id);
       if (!u) return;
       if (!confirm(`Tandai ${u.name} sebagai LUNAS & matikan Isolir (OFF)?`)) return;
-      const res = await fetch('/api/billing/pay', {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ id: u.id, name: u.name })
-      });
-      const data = await safeJson(res);
-      alert(data.message);
-      addActivity(`Pembayaran user <b>${u.name}</b> Berhasil (LUNAS)`, 'green');
-      await loadData();
+      try {
+        const res = await fetch('/api/billing/pay', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ id: u.id, name: u.name })
+        });
+        const data = await safeJson(res);
+        if (!data.success) throw new Error(data.message);
+        alert(data.message);
+        addActivity(`Pembayaran user <b>${esc(u.name)}</b> Berhasil (LUNAS)`, 'green');
+        await loadData();
+      } catch (err) {
+        alert(err.message);
+      }
     }
 
     async function resetMonth() {
       if (!confirm('Reset semua status tagihan bulan ini menjadi BELUM BAYAR?')) return;
-      const res = await fetch('/api/billing/reset-month', { method: 'POST', headers: getHeaders() });
-      const data = await safeJson(res);
-      alert(data.message);
-      addActivity('Status tagihan direset untuk bulan baru', 'blue');
-      await loadData();
+      try {
+        const res = await fetch('/api/billing/reset-month', { method: 'POST', headers: getHeaders() });
+        const data = await safeJson(res);
+        if (!data.success) throw new Error(data.message);
+        alert(data.message);
+        addActivity('Status tagihan direset untuk bulan baru', 'blue');
+        await loadData();
+      } catch (err) {
+        alert(err.message);
+      }
     }
 
     function closeModal(id) {

@@ -1062,30 +1062,112 @@
       bulkWaRunning = false;
     }
 
-    async function sendBulkWa() {
+  async function sendBulkWa() {
       if (bulkWaRunning) return;
       saveWaSettings();
       const cfg = JSON.parse(localStorage.getItem('mt_cfg') || '{}');
-      const delayMin = cfg.delayMin || 4;
-      const delayMax = cfg.delayMax || 9;
-      const batchPause = cfg.batchPause || 20;
+      const delayMin = Number(cfg.delayMin) || 4;
+      const delayMax = Math.max(delayMin, Number(cfg.delayMax) || 9);
+      const batchPause = Number(cfg.batchPause) || 20;
 
       const targets = allUsers
-        .filter(u => u.status !== 'LUNAS' && u.phone && u.phone.trim() !== '')
-        .map(u => ({ name: u.name, phone: formatPhone(u.phone), message: formatWaMessage(u) }));
+        .filter(u => u.status !== 'LUNAS' && u.phone && String(u.phone).trim() !== '')
+        .map(u => ({
+          name: u.name,
+          phone: formatPhone(u.phone),
+          message: formatWaMessage(u)
+        }))
+        .filter(t => t.phone.length >= 9);
 
-      if (!targets.length) return alert('Tidak ada user belum bayar yang memiliki nomor WA.');
-      if (!confirm(`Kirim WA otomatis ke ${targets.length} user?\nJeda acak: ${delayMin}-${delayMax} detik/pesan + jeda ekstra ${batchPause} detik tiap 15 pesan.`)) return;
+      if (!targets.length) {
+        return alert('Tidak ada user belum bayar yang memiliki nomor WA valid.');
+      }
+
+      if (!confirm(`Kirim WA otomatis ke ${targets.length} user?\nJeda acak: ${delayMin}-${delayMax} detik/pesan + jeda ekstra ${batchPause} detik tiap 15 pesan.`)) {
+        return;
+      }
 
       bulkWaRunning = true;
       const startBtn = document.getElementById('startBulkWaBtn');
       const stopBtn = document.getElementById('stopBulkWaBtn');
       const progBox = document.getElementById('waProgressBox');
 
-      startBtn.disabled = true;
-      stopBtn.classList.remove('hidden');
-      progBox.classList.remove('hidden');
+      if (startBtn) startBtn.disabled = true;
+      if (stopBtn) stopBtn.classList.remove('hidden');
+      if (progBox) progBox.classList.remove('hidden');
 
+      let okTotal = 0;
+      let errTotal = 0;
+      let lastFailMsg = '';
+
+      for (let i = 0; i < targets.length; i++) {
+        if (!bulkWaRunning) {
+          if (progBox) {
+            progBox.textContent = `Dihentikan pada pesan ke-${i} dari ${targets.length}. Berhasil: ${okTotal}, Gagal: ${errTotal}.`;
+          }
+          break;
+        }
+
+        const t = targets[i];
+        if (progBox) {
+          progBox.textContent = `[${i + 1}/${targets.length}] Mengirim ke ${t.name} (${t.phone})...`;
+        }
+
+        if (cfg.waToken) {
+          try {
+            const res = await fetch('/api/wa/send', {
+              method: 'POST',
+              headers: getHeaders(),
+              body: JSON.stringify({ targets: [t] })
+            });
+            const data = await safeJson(res);
+            const sentInStep = Number(data.sentCount) || (data.success ? 1 : 0);
+            if (sentInStep > 0) {
+              okTotal += sentInStep;
+            } else {
+              errTotal++;
+              lastFailMsg = data.message || 'Gagal kirim dari server';
+            }
+          } catch (err) {
+            errTotal++;
+            lastFailMsg = (err && err.message) || 'Error koneksi saat kirim WA';
+          }
+        } else {
+          window.open(`https://wa.me/${t.phone}?text=${encodeURIComponent(t.message)}`, '_blank');
+          okTotal++;
+        }
+
+        if (i < targets.length - 1 && bulkWaRunning) {
+          const isBatchBreak = (i + 1) % 15 === 0;
+          const waitSec = isBatchBreak
+            ? batchPause
+            : (Math.floor(Math.random() * (delayMax - delayMin + 1)) + delayMin);
+
+          for (let s = waitSec; s > 0; s--) {
+            if (!bulkWaRunning) break;
+            if (progBox) {
+              progBox.textContent = isBatchBreak
+                ? `[${i + 1}/${targets.length}] Istirahat anti-spam batch (tiap 15 user): lanjut dalam ${s} detik...`
+                : `[${i + 1}/${targets.length}] Terkirim (${t.name}). Jeda acak anti-spam: ${s} detik...`;
+            }
+            await sleepClient(1000);
+          }
+        }
+      }
+
+      if (bulkWaRunning) {
+        const ringkasan = lastFailMsg
+          ? `Selesai ${targets.length} user! Berhasil: ${okTotal}, Gagal: ${errTotal} (${lastFailMsg}).`
+          : `Selesai seluruh ${targets.length} user! Berhasil: ${okTotal}, Gagal: ${errTotal}.`;
+        if (progBox) progBox.textContent = ringkasan;
+        addActivity(`WA massal selesai (${okTotal}/${targets.length} terkirim)`, okTotal > 0 ? 'green' : 'red');
+        alert(ringkasan);
+      }
+
+      bulkWaRunning = false;
+      if (startBtn) startBtn.disabled = false;
+      if (stopBtn) stopBtn.classList.add('hidden');
+    }
       let okTotal = 0;
       let errTotal = 0;
 

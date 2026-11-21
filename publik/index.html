@@ -65,7 +65,7 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-medium text-slate-600 mb-1">Profile Isolir</label>
-            <input id="mtIsolir" type="text" value="isolir" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-blue-600" />
+            <input id="mtIsolir" type="text" value="profile-isolir" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-blue-600" />
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-600 mb-1">Token Fonnte (Opsional)</label>
@@ -77,7 +77,7 @@
           Hubungkan ke MikroTik
         </button>
       </form>
-      <p class="text-[11px] text-slate-400 text-center mt-4">Data tagihan & kendala tersimpan permanen di Router MikroTik Anda.</p>
+      <p class="text-[11px] text-slate-400 text-center mt-4">Data tagihan & isolir tersimpan dan sinkron langsung dengan MikroTik Anda.</p>
     </div>
   </div>
 
@@ -118,9 +118,18 @@
             <span id="sideBadgeTotal" class="text-[11px] bg-white/15 px-2 py-0.5 rounded-full">0</span>
           </button>
 
-          <button id="menu-profiles" onclick="switchView('profiles')" class="menu-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
+          <!-- MENU ISOLIR (ON / OFF) -->
+          <button id="menu-isolir" onclick="switchView('isolir')" class="menu-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
+            <span class="flex items-center gap-3">
+              <i class="fa-solid fa-ban w-4 text-center text-rose-400"></i>
+              <span>Isolir (ON / OFF)</span>
+            </span>
+            <span id="sideBadgeIsolir" class="text-[11px] bg-rose-500/40 text-rose-100 px-2 py-0.5 rounded-full font-bold">0</span>
+          </button>
+
+          <button id="menu-profiles" onclick="openBulkModal()" class="menu-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
             <i class="fa-solid fa-gear w-4 text-center"></i>
-            <span>Profile</span>
+            <span>Profile & Tarif</span>
           </button>
 
           <button id="menu-unpaid" onclick="switchView('users', 'UNPAID')" class="menu-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
@@ -144,7 +153,7 @@
               <i class="fa-solid fa-file-lines w-4 text-center"></i>
               <span>Laporan Kendala</span>
             </span>
-            <span id="sideBadgeError" class="text-[11px] bg-rose-500/30 text-rose-200 px-2 py-0.5 rounded-full">0</span>
+            <span id="sideBadgeError" class="text-[11px] bg-orange-500/30 text-orange-200 px-2 py-0.5 rounded-full">0</span>
           </button>
 
           <button onclick="openWaModal()" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition">
@@ -166,6 +175,7 @@
             </button>
             <div id="toolsSubmenu" class="hidden pl-9 pr-2 py-1 space-y-1 text-xs">
               <button onclick="openBulkModal()" class="w-full text-left py-1.5 px-2 rounded-lg text-blue-200 hover:bg-white/10">Set Tagihan Massal</button>
+              <button onclick="autoIsolateAllUnpaid()" class="w-full text-left py-1.5 px-2 rounded-lg text-rose-300 hover:bg-white/10">Isolir Otomatis Belum Bayar</button>
               <button onclick="openNotifModal()" class="w-full text-left py-1.5 px-2 rounded-lg text-blue-200 hover:bg-white/10">Lapor Kendala WA</button>
               <button onclick="resetMonth()" class="w-full text-left py-1.5 px-2 rounded-lg text-amber-300 hover:bg-white/10">Reset Bulan Baru</button>
             </div>
@@ -181,15 +191,11 @@
       <!-- ILUSTRASI ROUTER & VERSI DI BAWAH SIDEBAR -->
       <div class="relative pt-4 pb-4 px-4 text-center overflow-hidden">
         <div class="router-glow w-44 h-24 mx-auto flex flex-col items-center justify-end pb-1">
-          <!-- Ikon Router SVG Bergaya Hardware -->
           <svg class="w-28 h-20 drop-shadow-[0_6px_12px_rgba(0,140,255,0.6)]" viewBox="0 0 140 95" fill="none">
-            <!-- Antena Kiri & Kanan -->
             <rect x="26" y="6" width="5" height="44" rx="2.5" fill="#1e293b" stroke="#38bdf8" stroke-width="1"/>
             <rect x="109" y="6" width="5" height="44" rx="2.5" fill="#1e293b" stroke="#38bdf8" stroke-width="1"/>
-            <!-- Bodi Router -->
             <polygon points="16,52 124,52 132,68 8,68" fill="#1e293b" stroke="#3b82f6" stroke-width="1.2"/>
             <rect x="8" y="68" width="124" height="14" rx="3" fill="#0f172a" stroke="#2563eb" stroke-width="1.2"/>
-            <!-- Lampu Indikator LED -->
             <circle cx="24" cy="75" r="2.2" fill="#22d3ee"/>
             <circle cx="34" cy="75" r="2.2" fill="#22d3ee"/>
             <circle cx="44" cy="75" r="2.2" fill="#34d399"/>
@@ -230,7 +236,7 @@
 
           <button onclick="loadData()" title="Sinkron Data MikroTik" class="bg-blue-50 hover:bg-blue-100 text-blue-600 px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition">
             <i class="fa-solid fa-rotate"></i>
-            <span class="hidden sm:inline">Sinkron</span>
+            <span class="hidden sm:inline">Sinkron WinBox</span>
           </button>
 
           <div class="flex items-center gap-2">
@@ -273,14 +279,14 @@
             <i class="fa-solid fa-chart-simple text-6xl text-white/10 absolute -right-2 -bottom-2"></i>
           </div>
 
-          <div onclick="switchView('users', 'UNPAID')" class="cursor-pointer card-orange rounded-2xl p-5 text-white shadow-md hover:shadow-lg transition relative overflow-hidden">
+          <div onclick="switchView('isolir')" class="cursor-pointer card-orange rounded-2xl p-5 text-white shadow-md hover:shadow-lg transition relative overflow-hidden">
             <div class="flex items-center gap-4 relative z-10">
               <div class="w-12 h-12 rounded-full bg-white text-amber-500 flex items-center justify-center text-xl shadow">
-                <i class="fa-regular fa-clock"></i>
+                <i class="fa-solid fa-ban"></i>
               </div>
               <div>
                 <div id="cardExpiredUser" class="text-2xl md:text-3xl font-extrabold leading-tight">0</div>
-                <div class="text-xs text-amber-100 font-medium">Belum Bayar / Isolir</div>
+                <div class="text-xs text-amber-100 font-medium">Terisolir / Belum Bayar</div>
               </div>
             </div>
             <i class="fa-regular fa-clock text-6xl text-white/10 absolute -right-2 -bottom-2"></i>
@@ -300,9 +306,33 @@
           </div>
         </div>
 
+        <!-- PANEL KHUSUS MENU ISOLIR (ON / OFF) -->
+        <div id="isolirControlPanel" class="hidden bg-white border border-rose-200 rounded-2xl p-5 shadow-sm">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg shrink-0">
+                <i class="fa-solid fa-shield-halved"></i>
+              </div>
+              <div>
+                <h2 class="font-bold text-slate-800 text-base">Kontrol Isolir Otomatis (ON / OFF)</h2>
+                <p class="text-xs text-slate-500">Sakelar Isolir langsung memindahkan profile di MikroTik ke <span id="isolirProfileLabel" class="font-bold text-rose-600">profile-isolir</span> dan memutus sesi aktif pelanggan secara otomatis.</p>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="autoIsolateAllUnpaid()" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow">
+                <i class="fa-solid fa-power-off"></i>
+                <span>Isolir ON Semua Belum Bayar</span>
+              </button>
+              <button onclick="loadData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold">
+                Sinkron Status
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- VIEW: DASHBOARD OVERVIEW (GRAFIK + STATUS MIKROTIK) -->
         <div id="dashboardWidgets" class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <!-- GRAFIK PENGGUNA -->
           <div class="lg:col-span-2 bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
               <div class="flex items-center gap-2.5">
@@ -311,13 +341,12 @@
               </div>
               <div class="flex items-center gap-4 text-xs">
                 <span class="flex items-center gap-1.5 text-slate-600"><span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span> User Aktif</span>
-                <span class="flex items-center gap-1.5 text-slate-600"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Belum Bayar / Offline</span>
+                <span class="flex items-center gap-1.5 text-slate-600"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Belum Bayar / Isolir</span>
               </div>
             </div>
             <div id="chartContainer" class="w-full overflow-x-auto"></div>
           </div>
 
-          <!-- STATUS MIKROTIK -->
           <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
             <div>
               <div class="flex items-center gap-2.5 mb-4">
@@ -352,12 +381,12 @@
                   <span id="statusIsolir" class="font-semibold text-rose-600">-</span>
                 </div>
                 <div class="flex justify-between">
-                  <span class="text-slate-400">Online / Total</span>
-                  <span id="statusRatio" class="font-semibold text-emerald-600">0 / 0</span>
+                  <span class="text-slate-400">Sedang Terisolir</span>
+                  <span id="statusIsolatedCnt" class="font-semibold text-rose-600">0 user</span>
                 </div>
                 <div class="flex justify-between">
-                  <span class="text-slate-400">Kendala / Offline</span>
-                  <span id="statusErrorCnt" class="font-semibold text-orange-600">0 user</span>
+                  <span class="text-slate-400">Online / Total</span>
+                  <span id="statusRatio" class="font-semibold text-emerald-600">0 / 0</span>
                 </div>
               </div>
             </div>
@@ -371,7 +400,6 @@
 
         <!-- TABEL KELOLA USER PPPOE (INLINE-EDIT) + AKTIVITAS SISTEM -->
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-          <!-- TABEL USER PPPOE -->
           <div class="xl:col-span-2 bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div class="flex items-center gap-2.5">
@@ -379,7 +407,7 @@
                   <i class="fa-solid fa-list-check"></i>
                 </div>
                 <div>
-                  <h2 id="tableSectionTitle" class="font-bold text-slate-800 text-base">Daftar Pelanggan & Transaksi PPPoE</h2>
+                  <h2 id="tableSectionTitle" class="font-bold text-slate-800 text-base">Daftar Pelanggan & Kontrol Isolir PPPoE</h2>
                   <p id="searchCount" class="text-[11px] text-slate-400">Memuat data...</p>
                 </div>
               </div>
@@ -398,6 +426,7 @@
               </select>
               <select id="filterStatus" onchange="renderTable()" class="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-700">
                 <option value="ALL">Semua Status</option>
+                <option value="ISOLATED">Terisolir (ON)</option>
                 <option value="ONLINE">Online</option>
                 <option value="UNPAID">Belum Bayar / Isolir</option>
                 <option value="LUNAS">Sudah Lunas</option>
@@ -414,9 +443,9 @@
                     <th class="py-2.5 px-2">Koneksi</th>
                     <th class="py-2.5 px-2">Profile</th>
                     <th class="py-2.5 px-2">Tagihan (Rp)</th>
-                    <th class="py-2.5 px-2">Tempo</th>
                     <th class="py-2.5 px-2">No. WA</th>
                     <th class="py-2.5 px-2">Status & Bayar</th>
+                    <th class="py-2.5 px-2 text-center">Isolir ON/OFF</th>
                     <th class="py-2.5 px-3 text-right">Aksi</th>
                   </tr>
                 </thead>
@@ -540,7 +569,7 @@
         'x-mt-port': cfg.port || '8728',
         'x-mt-user': cfg.user || '',
         'x-mt-pass': cfg.pass || '',
-        'x-mt-isolir': cfg.isolir || 'isolir',
+        'x-mt-isolir': cfg.isolir || 'profile-isolir',
         'x-wa-token': cfg.waToken || ''
       };
     }
@@ -603,7 +632,7 @@
         document.getElementById('mtPort').value = saved.port;
         document.getElementById('mtUser').value = saved.user;
         document.getElementById('mtPass').value = saved.pass;
-        document.getElementById('mtIsolir').value = saved.isolir || 'isolir';
+        document.getElementById('mtIsolir').value = saved.isolir || 'profile-isolir';
         document.getElementById('waToken').value = saved.waToken || '';
       }
     };
@@ -621,7 +650,7 @@
         port: document.getElementById('mtPort').value.trim(),
         user: document.getElementById('mtUser').value.trim(),
         pass: document.getElementById('mtPass').value,
-        isolir: document.getElementById('mtIsolir').value.trim() || 'isolir',
+        isolir: document.getElementById('mtIsolir').value.trim() || 'profile-isolir',
         waToken: document.getElementById('waToken').value.trim()
       };
       localStorage.setItem('mt_cfg', JSON.stringify(cfg));
@@ -631,12 +660,18 @@
         const data = await res.json();
         if (!data.success) throw new Error(data.message);
 
+        if (data.isolirProfile) {
+          cfg.isolir = data.isolirProfile;
+          localStorage.setItem('mt_cfg', JSON.stringify(cfg));
+        }
+
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('dashboardScreen').classList.remove('hidden');
         document.getElementById('topUserLabel').textContent = cfg.user;
         document.getElementById('statusHost').textContent = cfg.host;
         document.getElementById('statusPort').textContent = cfg.port;
         document.getElementById('statusIsolir').textContent = cfg.isolir;
+        document.getElementById('isolirProfileLabel').textContent = cfg.isolir;
 
         addActivity(`Terhubung ke Router ${cfg.host}:${cfg.port}`, 'green');
         await loadData();
@@ -678,22 +713,24 @@
       const total = allUsers.length;
       const online = allUsers.filter(u => u.online).length;
       const lunasList = allUsers.filter(u => u.status === 'LUNAS');
+      const isolatedList = allUsers.filter(u => u.isIsolated);
       const unpaid = allUsers.filter(u => u.status !== 'LUNAS' || u.isIsolated).length;
       const errCnt = allUsers.filter(isUserProblem).length;
       const totalLunasRp = lunasList.reduce((acc, u) => acc + (Number(u.price) || 0), 0);
 
       document.getElementById('cardTotalUser').textContent = total.toLocaleString('id-ID');
       document.getElementById('cardActiveUser').textContent = online.toLocaleString('id-ID');
-      document.getElementById('cardExpiredUser').textContent = unpaid.toLocaleString('id-ID');
+      document.getElementById('cardExpiredUser').textContent = isolatedList.length.toLocaleString('id-ID');
       document.getElementById('cardTotalTransaksi').textContent = 'Rp ' + totalLunasRp.toLocaleString('id-ID');
 
       document.getElementById('sideBadgeTotal').textContent = total;
+      document.getElementById('sideBadgeIsolir').textContent = isolatedList.length;
       document.getElementById('sideBadgeUnpaid').textContent = unpaid;
       document.getElementById('sideBadgeLunas').textContent = lunasList.length;
       document.getElementById('sideBadgeError').textContent = errCnt;
 
       document.getElementById('statusRatio').textContent = `${online} / ${total}`;
-      document.getElementById('statusErrorCnt').textContent = `${errCnt} user`;
+      document.getElementById('statusIsolatedCnt').textContent = `${isolatedList.length} user`;
     }
 
     function renderChart() {
@@ -775,12 +812,16 @@
 
     function switchView(view, statusFilter) {
       const widgets = document.getElementById('dashboardWidgets');
+      const isolirPanel = document.getElementById('isolirControlPanel');
+      isolirPanel.classList.add('hidden');
+
       if (view === 'dashboard') {
         widgets.classList.remove('hidden');
         document.getElementById('filterStatus').value = 'ALL';
-      } else if (view === 'profiles') {
-        openBulkModal();
-        return;
+      } else if (view === 'isolir') {
+        widgets.classList.add('hidden');
+        isolirPanel.classList.remove('hidden');
+        document.getElementById('filterStatus').value = 'ISOLATED';
       } else {
         widgets.classList.add('hidden');
         if (statusFilter) document.getElementById('filterStatus').value = statusFilter;
@@ -790,9 +831,10 @@
         el.className = 'menu-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-blue-100 hover:bg-white/10 transition';
       });
       const activeId = view === 'dashboard' ? 'menu-dashboard' :
+        (view === 'isolir' ? 'menu-isolir' :
         (statusFilter === 'UNPAID' ? 'menu-unpaid' :
         (statusFilter === 'LUNAS' ? 'menu-lunas' :
-        (statusFilter === 'ERROR' ? 'menu-error' : 'menu-users')));
+        (statusFilter === 'ERROR' ? 'menu-error' : 'menu-users'))));
       const activeEl = document.getElementById(activeId);
       if (activeEl) {
         activeEl.className = 'menu-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium bg-blue-600 text-white shadow-md transition';
@@ -836,6 +878,7 @@
           (u.errorNote || '').toLowerCase().includes(q) ||
           (u.autoError || '').toLowerCase().includes(q);
         if (!matchText) return false;
+        if (filter === 'ISOLATED') return u.isIsolated;
         if (filter === 'ONLINE') return u.online;
         if (filter === 'LUNAS') return u.status === 'LUNAS';
         if (filter === 'UNPAID') return u.status !== 'LUNAS' || u.isIsolated;
@@ -847,11 +890,12 @@
       const profileOptions = [...new Set([...allProfiles, ...allUsers.map(u => u.profile).filter(Boolean)])];
 
       const tbody = document.getElementById('userTableBody');
-      tbody.innerHTML = filtered.map(u => {
+      tbody.innerHTML = filtered.map((u, idx) => {
         const priceNum = Number(u.price) || 150000;
         const kendalaLabel = u.errorNote || u.autoError || '';
+        const uidAttr = encodeURIComponent(u.id);
         return `
-          <tr class="hover:bg-slate-50/90">
+          <tr class="hover:bg-slate-50/90 ${u.isIsolated ? 'bg-rose-50/40' : ''}">
             <td class="py-2.5 px-3 align-top">
               <div class="font-bold text-slate-800">${u.name}</div>
               ${kendalaLabel ? `<div class="text-[11px] text-orange-600 mt-0.5">${kendalaLabel}</div>` : ''}
@@ -862,21 +906,18 @@
               </span>
             </td>
             <td class="py-2.5 px-2 align-top">
-              <select onchange="saveInline('${u.id}', '${u.name}', { profile: this.value })" class="bg-white border border-slate-300 rounded-md px-1.5 py-1 text-xs ${u.isIsolated ? 'text-rose-600 font-semibold' : 'text-slate-700'}">
+              <select onchange="saveInline(decodeURIComponent('${uidAttr}'), { profile: this.value })" class="bg-white border border-slate-300 rounded-md px-1.5 py-1 text-xs ${u.isIsolated ? 'text-rose-600 font-bold border-rose-300' : 'text-slate-700'}">
                 ${profileOptions.map(p => `<option value="${p}" ${p === u.profile ? 'selected' : ''}>${p}</option>`).join('')}
               </select>
             </td>
             <td class="py-2.5 px-2 align-top">
-              <select onchange="saveInline('${u.id}', '${u.name}', { price: Number(this.value) })" class="w-24 bg-white border border-slate-300 rounded-md px-1.5 py-1 text-xs text-slate-800 font-medium">
+              <select onchange="saveInline(decodeURIComponent('${uidAttr}'), { price: Number(this.value) })" class="w-24 bg-white border border-slate-300 rounded-md px-1.5 py-1 text-xs text-slate-800 font-medium">
                 ${PRESET_PRICES.map(pr => `<option value="${pr}" ${priceNum === pr ? 'selected' : ''}>${pr}</option>`).join('')}
                 ${!PRESET_PRICES.includes(priceNum) ? `<option value="${priceNum}" selected>${priceNum}</option>` : ''}
               </select>
             </td>
-            <td class="py-2.5 px-2 align-top whitespace-nowrap">
-              <input type="number" min="1" max="28" value="${u.dueDate}" onchange="saveInline('${u.id}', '${u.name}', { dueDate: Number(this.value) })" class="w-11 bg-white border border-slate-300 rounded-md px-1 py-1 text-xs text-slate-800 text-center" />
-            </td>
             <td class="py-2.5 px-2 align-top">
-              <input type="text" value="${u.phone || ''}" placeholder="62812..." onchange="saveInline('${u.id}', '${u.name}', { phone: this.value.trim() })" class="w-28 bg-white border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-800" />
+              <input type="text" value="${u.phone || ''}" placeholder="62812..." onchange="saveInline(decodeURIComponent('${uidAttr}'), { phone: this.value.trim() })" class="w-28 bg-white border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-800" />
             </td>
             <td class="py-2.5 px-2 align-top">
               <div class="mb-1">
@@ -884,19 +925,25 @@
                   ${u.status}
                 </span>
               </div>
-              <input type="date" value="${u.lastPaid || ''}" onchange="saveInline('${u.id}', '${u.name}', { lastPaid: this.value })" class="w-28 bg-white border border-slate-300 rounded-md px-1.5 py-0.5 text-[11px] text-slate-600" />
+              <input type="date" value="${u.lastPaid || ''}" onchange="saveInline(decodeURIComponent('${uidAttr}'), { lastPaid: this.value })" class="w-28 bg-white border border-slate-300 rounded-md px-1.5 py-0.5 text-[11px] text-slate-600" />
+            </td>
+            <td class="py-2.5 px-2 align-top text-center">
+              <button type="button" onclick="toggleIsolirById(decodeURIComponent('${uidAttr}'))" title="Klik untuk ON / OFF Isolir di MikroTik"
+                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold transition shadow-sm ${u.isIsolated ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}">
+                <span class="w-2 h-2 rounded-full ${u.isIsolated ? 'bg-white animate-pulse' : 'bg-slate-500'}"></span>
+                <span>${u.isIsolated ? 'ON' : 'OFF'}</span>
+              </button>
             </td>
             <td class="py-2.5 px-3 align-top text-right whitespace-nowrap space-x-1">
-              <button onclick="payUser('${u.id}', '${u.name}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded text-[11px] font-semibold">Lunas</button>
-              <button onclick="isolateUser('${u.id}', '${u.name}', '${u.profile}')" class="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded text-[11px] font-semibold">Isolir</button>
-              <button onclick='sendSingleWa(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="bg-teal-600 hover:bg-teal-700 text-white px-2 py-1 rounded text-[11px] font-semibold">WA</button>
+              <button type="button" onclick="payUserById(decodeURIComponent('${uidAttr}'))" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded text-[11px] font-semibold">Lunas</button>
+              <button type="button" onclick="sendSingleWaById(decodeURIComponent('${uidAttr}'))" class="bg-teal-600 hover:bg-teal-700 text-white px-2 py-1 rounded text-[11px] font-semibold">WA</button>
             </td>
           </tr>
         `;
       }).join('');
     }
 
-    async function saveInline(id, name, patch) {
+    async function saveInline(id, patch) {
       const u = allUsers.find(item => item.id === id);
       if (!u) return;
       try {
@@ -904,8 +951,8 @@
           method: 'POST',
           headers: getHeaders(),
           body: JSON.stringify({
-            id,
-            name,
+            id: u.id,
+            name: u.name,
             profile: patch.profile !== undefined ? patch.profile : u.profile,
             price: patch.price !== undefined ? patch.price : u.price,
             dueDate: patch.dueDate !== undefined ? patch.dueDate : u.dueDate,
@@ -916,10 +963,68 @@
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.message);
-        addActivity(`Data user <b>${name}</b> diperbarui`, 'blue');
+        addActivity(`Data user <b>${u.name}</b> diperbarui`, 'blue');
         await loadData();
       } catch (err) {
         alert('Gagal menyimpan: ' + err.message);
+      }
+    }
+
+    // SAKELAR ON / OFF ISOLIR SINKRON MIKROTIK
+    async function toggleIsolirById(id) {
+      const u = allUsers.find(item => item.id === id);
+      if (!u) return;
+
+      if (u.isIsolated) {
+        if (!confirm(`Matikan Isolir (OFF) untuk ${u.name} dan kembalikan ke paket ${u.originalProfile}?`)) return;
+        try {
+          const res = await fetch('/api/billing/unisolate', {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ id: u.id, name: u.name })
+          });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.message);
+          addActivity(`Isolir <b>OFF</b> untuk user <b>${u.name}</b>`, 'green');
+          await loadData();
+        } catch (err) {
+          alert(err.message);
+        }
+      } else {
+        if (!confirm(`Aktifkan Isolir (ON) untuk ${u.name} di MikroTik sekarang?`)) return;
+        try {
+          const res = await fetch('/api/billing/isolate', {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ id: u.id, name: u.name, currentProfile: u.profile })
+          });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.message);
+          addActivity(`Isolir <b>ON</b> untuk user <b>${u.name}</b>`, 'red');
+          await loadData();
+        } catch (err) {
+          alert(err.message);
+        }
+      }
+    }
+
+    async function autoIsolateAllUnpaid() {
+      const targets = allUsers.filter(u => u.status !== 'LUNAS' && !u.isIsolated);
+      if (!targets.length) return alert('Semua user yang belum bayar sudah berstatus Isolir ON.');
+      if (!confirm(`Aktifkan Isolir Otomatis (ON) untuk ${targets.length} user yang belum bayar sekarang?`)) return;
+
+      try {
+        const res = await fetch('/api/billing/auto-isolate-unpaid', {
+          method: 'POST',
+          headers: getHeaders()
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        alert(data.message);
+        addActivity(`Isolir otomatis dijalankan (${targets.length} user)`, 'red');
+        await loadData();
+      } catch (err) {
+        alert(err.message);
       }
     }
 
@@ -950,7 +1055,7 @@
       btn.textContent = 'Menyimpan...';
       try {
         for (const u of targets) {
-          await saveInline(u.id, u.name, { price, dueDate });
+          await saveInline(u.id, { price, dueDate });
         }
         closeModal('bulkModal');
         addActivity(`Set tagihan massal profile <b>${prof}</b> (Rp ${price.toLocaleString('id-ID')})`, 'blue');
@@ -1042,7 +1147,9 @@
       addActivity(`Laporan kendala dikirim ke WA Teknisi (${list.length} user)`, 'orange');
     }
 
-    async function sendSingleWa(u) {
+    async function sendSingleWaById(id) {
+      const u = allUsers.find(item => item.id === id);
+      if (!u) return;
       if (!u.phone) return alert(`Nomor WA untuk ${u.name} belum diisi.`);
       const cleanPhone = formatPhone(u.phone);
       const msg = formatWaMessage(u);
@@ -1062,22 +1169,19 @@
       }
     }
 
-    async function payUser(id, name) {
-      if (!confirm(`Tandai ${name} sebagai LUNAS?`)) return;
-      const res = await fetch('/api/billing/pay', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ id, name }) });
+    async function payUserById(id) {
+      const u = allUsers.find(item => item.id === id);
+      if (!u) return;
+      if (!confirm(`Tandai ${u.name} sebagai LUNAS & matikan Isolir (OFF)?`)) return;
+      const res = await fetch('/api/billing/pay', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ id: u.id, name: u.name })
+      });
       const data = await res.json();
       alert(data.message);
-      addActivity(`Pembayaran user <b>${name}</b> Berhasil (LUNAS)`, 'green');
-      loadData();
-    }
-
-    async function isolateUser(id, name, currentProfile) {
-      if (!confirm(`Isolir layanan user ${name}?`)) return;
-      const res = await fetch('/api/billing/isolate', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ id, name, currentProfile }) });
-      const data = await res.json();
-      alert(data.message);
-      addActivity(`User <b>${name}</b> diisolir`, 'orange');
-      loadData();
+      addActivity(`Pembayaran user <b>${u.name}</b> Berhasil (LUNAS)`, 'green');
+      await loadData();
     }
 
     async function resetMonth() {
@@ -1086,7 +1190,7 @@
       const data = await res.json();
       alert(data.message);
       addActivity('Status tagihan direset untuk bulan baru', 'blue');
-      loadData();
+      await loadData();
     }
 
     function closeModal(id) {

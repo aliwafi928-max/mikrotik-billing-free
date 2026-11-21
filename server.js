@@ -31,16 +31,14 @@ function buildComment(data) {
 
 function isIsolirName(profileName, configuredIsolir) {
   const p = (profileName || '').toLowerCase();
-  const cfg = (configuredIsolir || 'isolir').toLowerCase();
+  const cfg = (configuredIsolir || 'profile-isolir').toLowerCase();
   return p === cfg || p.includes('isolir');
 }
 
-async function resolveIsolirProfile(conn, configuredIsolir) {
-  const profiles = await conn.write('/ppp/profile/print');
-  const names = profiles.map(p => p.name);
-  const cfg = (configuredIsolir || 'isolir').trim();
-  if (names.includes(cfg)) return cfg;
-  const found = names.find(n => n.toLowerCase().includes('isolir'));
+function detectIsolirFromList(profileNames, configuredIsolir) {
+  const cfg = (configuredIsolir || 'profile-isolir').trim();
+  if (profileNames.includes(cfg)) return cfg;
+  const found = profileNames.find(n => n.toLowerCase().includes('isolir'));
   return found || cfg;
 }
 
@@ -88,7 +86,7 @@ function getMikrotikConfig(req) {
     port: Number(req.headers['x-mt-port']) || 8728,
     user: req.headers['x-mt-user'],
     password: req.headers['x-mt-pass'] || '',
-    isolirProfile: req.headers['x-mt-isolir'] || 'isolir',
+    isolirProfile: req.headers['x-mt-isolir'] || 'profile-isolir',
     fonnteToken: req.headers['x-wa-token'] || ''
   };
 }
@@ -101,7 +99,7 @@ async function withMikrotik(req, callback) {
     user: cfg.user,
     password: cfg.password,
     port: cfg.port,
-    timeout: 8
+    timeout: 7
   });
   conn.on('error', () => {});
   try {
@@ -127,11 +125,11 @@ async function sendAutoWA(token, phone, message) {
   }
 }
 
-async function kickActiveUser(conn, username) {
-  const actives = await conn.write('/ppp/active/print');
+async function kickActiveUser(conn, username, cachedActives = null) {
+  const actives = cachedActives || await conn.write('/ppp/active/print');
   const target = (username || '').trim().toLowerCase();
   for (const active of actives) {
-    if ((active.name || '').trim().toLowerCase() === target) {
+    if ((active.name || '').trim().toLowerCase() === target && active['.id']) {
       await conn.write('/ppp/active/remove', [`=.id=${active['.id']}`]);
     }
   }
@@ -141,7 +139,12 @@ app.post('/api/login', async (req, res) => {
   try {
     const detectedIsolir = await withMikrotik(req, async (conn, cfg) => {
       await conn.write('/system/identity/print');
-      return await resolveIsolirProfile(conn, cfg.isolirProfile);
+      let profileNames = [];
+      try {
+        const list = await conn.write('/ppp/profile/print');
+        profileNames = list.map(p => p.name).filter(Boolean);
+      } catch (_) {}
+      return detectIsolirFromList(profileNames, cfg.isolirProfile);
     });
     res.json({ success: true, isolirProfile: detectedIsolir, message: 'Berhasil terhubung ke MikroTik!' });
   } catch (err) {
@@ -153,11 +156,11 @@ app.get('/api/profiles', async (req, res) => {
   try {
     const profiles = await withMikrotik(req, async (conn) => {
       const list = await conn.write('/ppp/profile/print');
-      return list.map(p => p.name);
+      return list.map(p => p.name).filter(Boolean);
     });
     res.json({ success: true, data: profiles });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message || 'Gagal mengambil profile' });
   }
 });
 
@@ -166,11 +169,17 @@ app.get('/api/users', async (req, res) => {
     const result = await withMikrotik(req, async (conn, cfg) => {
       const secrets = await conn.write('/ppp/secret/print');
       const actives = await conn.write('/ppp/active/print');
-      const actualIsolir = await resolveIsolirProfile(conn, cfg.isolirProfile);
+      let profileNames = [];
+      try {
+        const pList = await conn.write('/ppp/profile/print');
+        profileNames = pList.map(p => p.name).filter(Boolean);
+      } catch (_) {}
+
+      const actualIsolir = detectIsolirFromList(profileNames, cfg.isolirProfile);
       let logs = [];
       try {
         const rawLogs = await conn.write('/log/print', ['?topics=pppoe,ppp,info']);
-        logs = rawLogs.slice(-150);
+        logs = rawLogs.slice(-120);
       } catch (_) {}
 
       const activeMap = new Map();
@@ -207,7 +216,7 @@ app.get('/api/users', async (req, res) => {
     });
     res.json({ success: true, data: result });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message || 'Gagal memuat user' });
   }
 });
 
@@ -215,16 +224,18 @@ app.post('/api/users/update', async (req, res) => {
   const { id, name, profile, price, phone, dueDate, status, lastPaid } = req.body;
   try {
     await withMikrotik(req, async (conn, cfg) => {
-      const actualIsolir = await resolveIsolirProfile(conn, cfg.isolirProfile);
-      const secrets = await conn.write('/ppp/secret/print', [`?.id=${id}`]);
-      const current = secrets[0] || {};
+      const secrets = await conn.write('/ppp/secret/print');
+      const current = secrets.find(s => s['.id'] === id || s.name === name) || {};
+      const targetId = current['.id'] || id;
       const oldData = parseComment(current.comment);
 
       const newStatus = status || oldData.s || 'BELUM BAYAR';
       const todayISO = new Date().toISOString().split('T')[0];
       const newLastPaid = newStatus === 'LUNAS' ? (lastPaid || oldData.lp || todayISO) : (lastPaid !== undefined ? lastPaid : oldData.lp || '');
       const targetProf = profile || current.profile;
-      const origProfile = !isIsolirName(targetProf, actualIsolir) ? targetProf : (oldData.op || (!isIsolirName(current.profile, actualIsolir) ? current.profile : 'default'));
+      const origProfile = !isIsolirName(targetProf, cfg.isolirProfile)
+        ? targetProf
+        : (oldData.op || (!isIsolirName(current.profile, cfg.isolirProfile) ? current.profile : 'default'));
 
       const commentStr = buildComment({
         price,
@@ -236,18 +247,18 @@ app.post('/api/users/update', async (req, res) => {
         errorNote: oldData.e || ''
       });
 
-      const params = [`=.id=${id}`, `=comment=${commentStr}`];
+      const params = [`=.id=${targetId}`, `=comment=${commentStr}`];
       if (profile) params.push(`=profile=${profile}`);
 
       await conn.write('/ppp/secret/set', params);
 
       if (profile && profile !== current.profile) {
-        await kickActiveUser(conn, name);
+        await kickActiveUser(conn, name || current.name);
       }
     });
     res.json({ success: true, message: `Data ${name} tersimpan permanen di MikroTik.` });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Gagal menyimpan: ' + err.message });
+    res.status(500).json({ success: false, message: 'Gagal menyimpan: ' + (err.message || 'Error RouterOS') });
   }
 });
 
@@ -255,9 +266,9 @@ app.post('/api/users/error', async (req, res) => {
   const { id, name, errorNote } = req.body;
   try {
     await withMikrotik(req, async (conn, cfg) => {
-      const actualIsolir = await resolveIsolirProfile(conn, cfg.isolirProfile);
-      const secrets = await conn.write('/ppp/secret/print', [`?.id=${id}`]);
-      const current = secrets[0] || {};
+      const secrets = await conn.write('/ppp/secret/print');
+      const current = secrets.find(s => s['.id'] === id || s.name === name) || {};
+      const targetId = current['.id'] || id;
       const oldData = parseComment(current.comment);
 
       const commentStr = buildComment({
@@ -266,15 +277,15 @@ app.post('/api/users/error', async (req, res) => {
         dueDate: oldData.d || 10,
         status: oldData.s || 'BELUM BAYAR',
         lastPaid: oldData.lp || '',
-        originalProfile: oldData.op || (!isIsolirName(current.profile, actualIsolir) ? current.profile : 'default'),
+        originalProfile: oldData.op || (!isIsolirName(current.profile, cfg.isolirProfile) ? current.profile : 'default'),
         errorNote: (errorNote || '').trim()
       });
 
-      await conn.write('/ppp/secret/set', [`=.id=${id}`, `=comment=${commentStr}`]);
+      await conn.write('/ppp/secret/set', [`=.id=${targetId}`, `=comment=${commentStr}`]);
     });
     res.json({ success: true, message: errorNote ? `Kendala ${name} disimpan.` : `Kendala ${name} dihapus.` });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Gagal menyimpan kendala: ' + err.message });
+    res.status(500).json({ success: false, message: 'Gagal menyimpan kendala: ' + (err.message || 'Error RouterOS') });
   }
 });
 
@@ -310,13 +321,15 @@ app.post('/api/billing/pay', async (req, res) => {
     let savedData = {};
 
     await withMikrotik(req, async (conn, cfg) => {
-      const actualIsolir = await resolveIsolirProfile(conn, cfg.isolirProfile);
-      const secrets = await conn.write('/ppp/secret/print', [`?.id=${id}`]);
-      const current = secrets[0] || {};
+      const secrets = await conn.write('/ppp/secret/print');
+      const current = secrets.find(s => s['.id'] === id || s.name === name) || {};
+      const targetId = current['.id'] || id;
+      const targetName = current.name || name;
       const oldData = parseComment(current.comment);
-      const targetProfile = oldData.op && !isIsolirName(oldData.op, actualIsolir)
+
+      const targetProfile = oldData.op && !isIsolirName(oldData.op, cfg.isolirProfile)
         ? oldData.op
-        : (!isIsolirName(current.profile, actualIsolir) ? current.profile : 'default');
+        : (!isIsolirName(current.profile, cfg.isolirProfile) ? current.profile : 'default');
 
       savedData = {
         price: oldData.p || 150000,
@@ -329,13 +342,13 @@ app.post('/api/billing/pay', async (req, res) => {
       };
 
       await conn.write('/ppp/secret/set', [
-        `=.id=${id}`,
+        `=.id=${targetId}`,
         `=profile=${targetProfile}`,
         `=disabled=no`,
         `=comment=${buildComment(savedData)}`
       ]);
 
-      await kickActiveUser(conn, name);
+      await kickActiveUser(conn, targetName);
     });
 
     const cfg = getMikrotikConfig(req);
@@ -345,23 +358,32 @@ app.post('/api/billing/pay', async (req, res) => {
 
     res.json({ success: true, message: `User ${name} LUNAS & Isolir OFF. ${waResult.sent ? 'WA terkirim!' : ''}` });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message || 'Gagal memproses pembayaran' });
   }
 });
 
-// ISOLIR ON (AKTIFKAN ISOLIR)
 app.post('/api/billing/isolate', async (req, res) => {
   const { id, name, currentProfile } = req.body;
   try {
     let savedData = {};
-    let usedProfile = '';
+    let usedProfile = cfgIsolirFallback(req);
 
     await withMikrotik(req, async (conn, cfg) => {
-      const actualIsolir = await resolveIsolirProfile(conn, cfg.isolirProfile);
+      let profileNames = [];
+      try {
+        const pList = await conn.write('/ppp/profile/print');
+        profileNames = pList.map(p => p.name).filter(Boolean);
+      } catch (_) {}
+
+      const actualIsolir = detectIsolirFromList(profileNames, cfg.isolirProfile);
       usedProfile = actualIsolir;
-      const secrets = await conn.write('/ppp/secret/print', [`?.id=${id}`]);
-      const current = secrets[0] || {};
+
+      const secrets = await conn.write('/ppp/secret/print');
+      const current = secrets.find(s => s['.id'] === id || s.name === name) || {};
+      const targetId = current['.id'] || id;
+      const targetName = current.name || name;
       const oldData = parseComment(current.comment);
+
       const origProfile = (currentProfile && !isIsolirName(currentProfile, actualIsolir))
         ? currentProfile
         : (!isIsolirName(current.profile, actualIsolir) ? current.profile : (oldData.op || 'default'));
@@ -377,12 +399,12 @@ app.post('/api/billing/isolate', async (req, res) => {
       };
 
       await conn.write('/ppp/secret/set', [
-        `=.id=${id}`,
+        `=.id=${targetId}`,
         `=profile=${actualIsolir}`,
         `=comment=${buildComment(savedData)}`
       ]);
 
-      await kickActiveUser(conn, name);
+      await kickActiveUser(conn, targetName);
     });
 
     const cfg = getMikrotikConfig(req);
@@ -392,23 +414,33 @@ app.post('/api/billing/isolate', async (req, res) => {
 
     res.json({ success: true, message: `Isolir ON untuk ${name} (Profile: ${usedProfile}). ${waResult.sent ? 'WA terkirim!' : ''}` });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Gagal isolir: ' + err.message });
+    res.status(500).json({ success: false, message: 'Gagal isolir: ' + (err.message || 'Error RouterOS') });
   }
 });
 
-// ISOLIR OFF (BUKA ISOLIR TANPA UBAH STATUS LUNAS)
+function cfgIsolirFallback(req) {
+  return req.headers['x-mt-isolir'] || 'profile-isolir';
+}
+
 app.post('/api/billing/unisolate', async (req, res) => {
   const { id, name } = req.body;
   try {
     let restoredProfile = 'default';
     await withMikrotik(req, async (conn, cfg) => {
-      const actualIsolir = await resolveIsolirProfile(conn, cfg.isolirProfile);
-      const secrets = await conn.write('/ppp/secret/print', [`?.id=${id}`]);
-      const current = secrets[0] || {};
+      let profileNames = [];
+      try {
+        const pList = await conn.write('/ppp/profile/print');
+        profileNames = pList.map(p => p.name).filter(Boolean);
+      } catch (_) {}
+
+      const actualIsolir = detectIsolirFromList(profileNames, cfg.isolirProfile);
+      const secrets = await conn.write('/ppp/secret/print');
+      const current = secrets.find(s => s['.id'] === id || s.name === name) || {};
+      const targetId = current['.id'] || id;
+      const targetName = current.name || name;
       const oldData = parseComment(current.comment);
 
-      const profiles = await conn.write('/ppp/profile/print');
-      const fallbackProf = profiles.map(p => p.name).find(n => !isIsolirName(n, actualIsolir) && n !== 'default-encryption') || 'default';
+      const fallbackProf = profileNames.find(n => !isIsolirName(n, actualIsolir) && n !== 'default-encryption') || 'default';
 
       restoredProfile = (oldData.op && !isIsolirName(oldData.op, actualIsolir))
         ? oldData.op
@@ -425,33 +457,41 @@ app.post('/api/billing/unisolate', async (req, res) => {
       };
 
       await conn.write('/ppp/secret/set', [
-        `=.id=${id}`,
+        `=.id=${targetId}`,
         `=profile=${restoredProfile}`,
         `=disabled=no`,
         `=comment=${buildComment(savedData)}`
       ]);
 
-      await kickActiveUser(conn, name);
+      await kickActiveUser(conn, targetName);
     });
 
     res.json({ success: true, message: `Isolir OFF untuk ${name} (Kembali ke ${restoredProfile}).` });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Gagal buka isolir: ' + err.message });
+    res.status(500).json({ success: false, message: 'Gagal buka isolir: ' + (err.message || 'Error RouterOS') });
   }
 });
 
-// ISOLIR OTOMATIS MASSAL (SEMUA BELUM BAYAR)
 app.post('/api/billing/auto-isolate-unpaid', async (req, res) => {
   try {
     let count = 0;
-    let usedProfile = '';
+    let usedProfile = cfgIsolirFallback(req);
+
     await withMikrotik(req, async (conn, cfg) => {
-      const actualIsolir = await resolveIsolirProfile(conn, cfg.isolirProfile);
+      let profileNames = [];
+      try {
+        const pList = await conn.write('/ppp/profile/print');
+        profileNames = pList.map(p => p.name).filter(Boolean);
+      } catch (_) {}
+
+      const actualIsolir = detectIsolirFromList(profileNames, cfg.isolirProfile);
       usedProfile = actualIsolir;
+
       const secrets = await conn.write('/ppp/secret/print');
       const actives = await conn.write('/ppp/active/print');
 
       for (const secret of secrets) {
+        if (!secret['.id']) continue;
         const oldData = parseComment(secret.comment);
         const status = oldData.s || 'BELUM BAYAR';
         const alreadyIsolir = isIsolirName(secret.profile, actualIsolir) || secret.disabled === 'true';
@@ -473,28 +513,23 @@ app.post('/api/billing/auto-isolate-unpaid', async (req, res) => {
             `=comment=${updated}`
           ]);
 
-          const target = (secret.name || '').trim().toLowerCase();
-          for (const act of actives) {
-            if ((act.name || '').trim().toLowerCase() === target) {
-              await conn.write('/ppp/active/remove', [`=.id=${act['.id']}`]);
-            }
-          }
+          await kickActiveUser(conn, secret.name, actives);
           count++;
         }
       }
     });
     res.json({ success: true, message: `Berhasil mengisolir otomatis ${count} user belum bayar ke ${usedProfile}.` });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Gagal isolir massal: ' + err.message });
+    res.status(500).json({ success: false, message: 'Gagal isolir massal: ' + (err.message || 'Error RouterOS') });
   }
 });
 
 app.post('/api/billing/reset-month', async (req, res) => {
   try {
     await withMikrotik(req, async (conn, cfg) => {
-      const actualIsolir = await resolveIsolirProfile(conn, cfg.isolirProfile);
       const secrets = await conn.write('/ppp/secret/print');
       for (const secret of secrets) {
+        if (!secret['.id']) continue;
         const oldData = parseComment(secret.comment);
         if (oldData.s === 'LUNAS') {
           const updated = buildComment({
@@ -503,7 +538,7 @@ app.post('/api/billing/reset-month', async (req, res) => {
             dueDate: oldData.d || 10,
             status: 'BELUM BAYAR',
             lastPaid: oldData.lp || '',
-            originalProfile: oldData.op || (!isIsolirName(secret.profile, actualIsolir) ? secret.profile : 'default'),
+            originalProfile: oldData.op || (!isIsolirName(secret.profile, cfg.isolirProfile) ? secret.profile : 'default'),
             errorNote: oldData.e || ''
           });
           await conn.write('/ppp/secret/set', [`=.id=${secret['.id']}`, `=comment=${updated}`]);
@@ -512,8 +547,13 @@ app.post('/api/billing/reset-month', async (req, res) => {
     });
     res.json({ success: true, message: 'Semua status tagihan berhasil direset ke BELUM BAYAR.' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message || 'Gagal reset bulan' });
   }
+});
+
+// Fallback agar error tak terduga tetap mengembalikan JSON valid
+app.use((err, req, res, next) => {
+  res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
 });
 
 if (!process.env.VERCEL) {
